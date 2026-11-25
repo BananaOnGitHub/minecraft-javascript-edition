@@ -235,11 +235,19 @@ async function bundleJs() {
   const esbuild = require('esbuild');
   const common = { bundle: true, minify: true, write: false, target: 'es2022', legalComments: 'none', logLevel: 'warning' };
   const worker = await esbuild.build({ ...common, entryPoints: [path.join(CLIENT, 'js/render/mesh-worker.js')], format: 'iife' });
+  const localWorldWorker = await esbuild.build({
+    ...common,
+    entryPoints: [path.join(CLIENT, 'js/local-world/worker.js')],
+    format: 'iife',
+  });
   const main = await esbuild.build({
     ...common,
     entryPoints: [path.join(CLIENT, 'js/main.js')],
     format: 'esm',
-    define: { __MESH_WORKER_SOURCE__: JSON.stringify(worker.outputFiles[0].text) },
+    define: {
+      __MESH_WORKER_SOURCE__: JSON.stringify(worker.outputFiles[0].text),
+      __LOCAL_WORLD_WORKER_SOURCE__: JSON.stringify(localWorldWorker.outputFiles[0].text),
+    },
   });
   return main.outputFiles[0].text;
 }

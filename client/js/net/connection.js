@@ -2,6 +2,7 @@
 // (platform().openSocket, the proxy logs in), or a Java relay / Wisp server carrying raw TCP (tcp.js, the client logs
 // in); Eaglercraft servers (ws:// / wss:// addresses) are reached directly over their own WebSocket (eagler.js). All
 // sockets look the same: binary frames carry raw play packets (varint id + body), text frames JSON control messages.
+// Local worlds supply the same interface over a dedicated worker message channel.
 import { decodePacket } from './packets.js';
 import { platform } from '../platform/platform.js';
 import { parseAddress } from './address.js';
@@ -37,6 +38,17 @@ export class Connection {
     let sock;
     if (eagler) sock = await openEaglerSocket(eagler);
     else sock = await openProxySocket();
+    this.attachSocket(sock);
+  }
+
+  async connectLocal(sock) {
+    this.local = true;
+    this.state = 'login';
+    this.attachSocket(sock);
+    await sock.start();
+  }
+
+  attachSocket(sock) {
     this.ws = sock;
     sock.on('close', () => {
       const was = this.state;
@@ -98,6 +110,6 @@ export class Connection {
   }
 
   close() {
-    if (this.ws) this.ws.close();
+    if (this.ws) return this.ws.close();
   }
 }
