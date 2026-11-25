@@ -13,6 +13,15 @@ export function trOption(key, value) { return tr(key) + ': ' + value; }
 export const onOff = (v) => tr(v ? 'options.on' : 'options.off');
 
 export const MINECRAFTJS_EN = {
+  'minecraftjs.local.worlds': 'Local Worlds',
+  'minecraftjs.local.open': 'Play World',
+  'minecraftjs.local.create': 'Create World',
+  'minecraftjs.local.name': 'World name',
+  'minecraftjs.local.seed': 'Seed (optional)',
+  'minecraftjs.local.empty': 'Create a world to start building.',
+  'minecraftjs.local.opening': 'Opening local world...',
+  'minecraftjs.local.saveAndQuit': 'Save and Quit',
+  'minecraftjs.local.saving': 'Saving local world...',
   'minecraftjs.extras.title':'MinecraftJS Extras',
   'minecraftjs.extras.skipUndisplayedFrames':'Skip Undisplayable Frames',
   'minecraftjs.extras.skipUndisplayedFrames.tooltip':"With VSync off, frames finished faster than your monitor refreshes are never seen. Keep running the game every frame but only draw the ones your display can show, for higher real frame rates. Not VSync: nothing is capped.",

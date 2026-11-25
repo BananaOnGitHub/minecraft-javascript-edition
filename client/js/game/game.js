@@ -28,6 +28,7 @@ import { Profiler } from './profiler.js';
 import { celestialAngle } from '../render/sky.js';
 import { tr } from '../gui/i18n.js';
 import { Connection } from '../net/connection.js';
+import { LocalWorldSocket } from '../local-world/socket.js';
 import { isEaglerAddress } from '../net/address.js';
 import { C } from '../net/packets.js';
 import { Writer } from '../net/buffer.js';
@@ -570,10 +571,7 @@ export class Game {
     }
     if(attempt!==this.connectAttempt)return;
     this.username = username;
-    const conn = this.conn = new Connection();
-    conn.on('control', (m) => this.onControl(m, conn));
-    conn.on('packet', (p) => { if (this.conn === conn) this.handlePacket(p); });
-    conn.on('close', () => { if (this.conn === conn) this.onConnectionClosed(); });
+    const conn = this.bindConnection();
     try {
       await conn.connect(host, port, username, auth);
     } catch (e) {
@@ -582,15 +580,55 @@ export class Game {
     }
   }
 
+  bindConnection() {
+    const conn = this.conn = new Connection();
+    conn.on('control', m => this.onControl(m, conn));
+    conn.on('packet', p => { if (this.conn === conn) this.handlePacket(p); });
+    conn.on('close', () => { if (this.conn === conn) this.onConnectionClosed(); });
+    return conn;
+  }
+
+  async connectLocalWorld(options) {
+    this.disconnect(true);
+    this.reset();
+    this.serverAddress = null;
+    const screen = new ConnectingScreen(this, options.name, 0);
+    screen.status = tr('minecraftjs.local.opening');
+    this.screens.open(screen);
+    const conn = this.bindConnection();
+    await this.localWorldClose;
+    if (this.conn !== conn) return;
+    try {
+      await conn.connectLocal(new LocalWorldSocket(platform(), options));
+    } catch (error) {
+      if (this.conn !== conn) return;
+      this.disconnect(true);
+      this.screens.open(new DisconnectedScreen(this, tr('connect.failed'), error.message, true));
+    }
+  }
+
   disconnect(silent = false, reason) {
-    this.connectAttempt=(this.connectAttempt||0)+1;
+    const attempt = this.connectAttempt = (this.connectAttempt || 0) + 1;
+    const savingLocal = !silent && this.inWorld && this.conn?.local;
     if (this.conn) {
       const c = this.conn;
       this.conn = null;
-      c.close();
+      const closing = c.close();
+      if (c.local) this.localWorldClose = Promise.resolve(closing).catch(error => {
+        console.error('Local world save failed', error);
+        return error.message;
+      });
     }
     this.leaveWorld();
-    if (!silent) this.screens.openMainMenu(reason);
+    if (savingLocal) {
+      const screen = new ConnectingScreen(this, '', 0);
+      screen.status = tr('minecraftjs.local.saving');
+      screen.cancelable = false;
+      this.screens.open(screen);
+      this.localWorldClose.then(error => {
+        if (this.connectAttempt === attempt) this.screens.openMainMenu(error || reason);
+      });
+    } else if (!silent) this.screens.openMainMenu(reason);
   }
 
   // CommandBlockLogic.tryOpenEditCommandBlock (1.8): any creative player gets the GUI
@@ -657,11 +695,12 @@ export class Game {
   onConnectionClosed() {
     const reason = this.kickReason || (this.lastError ? this.lastError : tr('disconnect.closed'));
     const title = this.inWorld || this.connected ? tr('disconnect.lost') : tr('connect.failed');
+    const local = this.conn?.local;
     this.conn = null;
     this.leaveWorld();
     this.kickReason = null;
     this.lastError = null;
-    this.screens.open(new DisconnectedScreen(this, title, reason));
+    this.screens.open(new DisconnectedScreen(this, title, reason, local));
   }
 
   send(bytes) { if (this.conn) this.conn.send(bytes); }

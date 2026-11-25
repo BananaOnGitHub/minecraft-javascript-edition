@@ -11,6 +11,7 @@ import { SlotList } from '../slot-list.js';
 import { ProxiesScreen } from './proxies.js';
 import { parseAddress, formatAddress } from '../../net/address.js';
 import { ensureTested } from '../../net/proxies.js';
+import { LocalWorldsScreen } from './local-worlds.js';
 
 export class TitleScreen extends Screen {
   constructor(game, reason) {
@@ -33,9 +34,9 @@ export class TitleScreen extends Screen {
     }
     const cx = Math.floor(this.width / 2);
     const y = this.height / 4 + 48;
-    const sp = new Button(1, cx - 100, y, 200, 20, tr('menu.singleplayer'));
-    sp.enabled = false;
-    this.buttons.push(sp);
+    this.buttons.push(new Button(1, cx - 100, y, 200, 20, tr('menu.singleplayer'), () => {
+      g.screens.open(new LocalWorldsScreen(g, this));
+    }));
     this.buttons.push(new Button(2, cx - 100, y + 24, 200, 20, tr('menu.multiplayer'), () => g.screens.open(new MultiplayerScreen(g, this))));
     const realms = new Button(14, cx - 100, y + 48, 200, 20, tr('menu.online'));
     realms.enabled = false;
@@ -450,20 +451,23 @@ export class ConnectingScreen extends Screen {
     super(game);
     this.background = 'dirt';
     this.status = tr('connect.connecting');
+    this.cancelable = true;
     this.host = host; this.port = port;
   }
   init() {
+    if (!this.cancelable) return;
     this.buttons.push(new Button(0, this.width / 2 - 100, this.height / 4 + 120 + 12, 200, 20, tr('gui.cancel'), () => this.game.disconnect()));
   }
   renderContent(gui) {
     gui.textCentered(this.status, this.width / 2, this.height / 2 - 50, 0xffffff);
   }
-  key(e) { if (e.code === 'Escape') this.game.disconnect(); return true; }
+  key(e) { if (this.cancelable && e.code === 'Escape') this.game.disconnect(); return true; }
 }
 
 export class DisconnectedScreen extends Screen {
-  constructor(game, title, reason) {
+  constructor(game, title, reason, local = false) {
     super(game);
+    this.local = local;
     this.background = 'dirt';
     this.title = title;
     this.reason = reason || '';
@@ -472,7 +476,8 @@ export class DisconnectedScreen extends Screen {
     this.lines = this.gui.font.wrap(this.reason, this.width - 50);
     const h = this.lines.length * 9;
     this.buttons.push(new Button(0, this.width / 2 - 100, this.height / 2 + h / 2 + 9, 200, 20, tr('gui.toMenu'), () => {
-      this.game.screens.open(new MultiplayerScreen(this.game, new TitleScreen(this.game)));
+      const title = new TitleScreen(this.game);
+      this.game.screens.open(this.local ? new LocalWorldsScreen(this.game, title) : new MultiplayerScreen(this.game, title));
     }));
   }
   renderContent(gui) {

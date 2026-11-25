@@ -24,7 +24,7 @@ export class PauseScreen extends Screen {
     const lan = new Button(7, cx + 2, y + 96 - 16, 98, 20, tr('menu.shareToLan'));
     lan.enabled = false;
     this.buttons.push(lan);
-    this.buttons.push(new Button(1, cx - 100, y + 120 - 16, 200, 20, tr('menu.disconnect'), () => g.disconnect(false)));
+    this.buttons.push(new Button(1, cx - 100, y + 120 - 16, 200, 20, tr(g.conn?.local ? 'minecraftjs.local.saveAndQuit' : 'menu.disconnect'), () => g.disconnect(false)));
   }
 
   renderContent(gui) {
