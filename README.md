@@ -24,6 +24,9 @@ npm start
 Then open http://localhost:3000. The proxy serves the client, bridges the browser to Minecraft servers (TCP),
 relays Microsoft account sign in and serves player skins.
 
+For local singleplayer, start a world from the **Singleplayer** menu. The world runs in a browser worker under
+the same `npm start` setup. See [local worlds](docs/local-worlds.md) for details and save storage.
+
 Game assets are found automatically, in this order:
 
 1. `client/assets/` if you have built it (see below)

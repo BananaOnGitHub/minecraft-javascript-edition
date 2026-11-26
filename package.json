@@ -7,6 +7,7 @@
     "dev": "node proxy.js",
     "assets": "node tools/build.js assets",
     "build": "node tools/build.js html",
+    "test:local-worlds": "node --test tools/test-local-world.mjs",
     "test:adventure-tooltips": "node tools/adventure-tooltip-fixtures.mjs --check && node --test tools/test-adventure-tooltips.mjs tools/test-adventure.mjs",
     "test:resource-layers": "node --test tools/test-resource-layers.mjs tools/test-resource-image-namespaces.mjs tools/test-font-spacing.mjs",
     "test:wolf-parity": "node --test tools/test-wolf-collar.mjs",

@@ -6,13 +6,16 @@ This work adds a browser-hosted building sandbox to the MinecraftJS 1.8.9 client
 
 Open **Singleplayer → Create World**, enter a name and an optional seed, and choose **Create World**. Use the existing movement, jump, and block interaction controls. **Esc → Save and Quit** waits for the worker’s final checkpoint before returning to the menu. Reopen the same named world under **Singleplayer**. Names are unique within the browser origin. With a blank seed, the world name is the seed.
 
-Provision assets from your own installation using the upstream build. For example, run the following in the client checkout. A static HTTP server on a consistent local origin keeps IndexedDB saves available between visits.
+Run the usual MinecraftJS development server from the client checkout. The proxy serves the application, and its existing asset loader locates your local game installation or prebuilt `client/assets/` folder.
 
     npm ci
-    npm run build -- --static --audio=copy --out=dist/local-worlds
-    python3 -m http.server 8000 --bind 127.0.0.1 --directory dist/local-worlds
+    npm start
 
-The runtime game server runs in a dedicated worker. A static file server only serves the browser application. The packed HTML build also embeds the worker. Storage availability for locally opened HTML depends on browser handling of local origins.
+Open http://localhost:3000 and select Singleplayer. Local worlds run in a dedicated browser worker using IndexedDB. Saves belong to the exact browser origin, including its hostname and port. If you already created a world at `http://127.0.0.1:8000`, stop the previous static server, run `PORT=8000 npm start`, and reopen that same URL.
+
+The existing static and packed HTML build commands also support local worlds. The npm development server serves source files directly, so a distribution rebuild is unnecessary for source changes.
+
+Run the integrated-server regression suite with `npm run test:local-worlds`.
 
 ## Integration
 
@@ -39,9 +42,9 @@ No external server package was benchmarked in this environment. The server proje
 
 ## Base and validation
 
-Upstream and the development fork both resolved to commit
+The initial patch was based on commit
 [e6d2c47da32e67b8a30082e469430f3a12ddabfc](https://github.com/Reb0rnEnder/MinecraftJS/commit/e6d2c47da32e67b8a30082e469430f3a12ddabfc)
-on branch 1.8.9. The local project folder contained the vanilla reference installation, server and worlds. Use the fork’s existing 1.8.9 history as the patch base. The patch can be applied with git am. For future upstream updates, fetch Reb0rnEnder/MinecraftJS as the upstream remote and merge upstream/1.8.9 on a development branch before running the regression suite.
+on branch 1.8.9. The local test branch now includes the fork's November 26 update through [4ee78a8](https://github.com/Reb0rnEnder/MinecraftJS/commit/4ee78a870cee3c71bcebd2350b1b433a0707e573), with full Git history fetched. The name-tag and tab-list fixes merged without conflicts. For future upstream updates, fetch Reb0rnEnder/MinecraftJS as the upstream remote and merge upstream/1.8.9 on a development branch before running the regression suite.
 
 ### Verified results
 
@@ -49,13 +52,14 @@ The source inputs matched the upstream Git blob hashes.
 
 - Upstream and modified packed builds and the modified static build completed using cached npm dependencies and the local 1.8.9 asset installation.
 - Existing menu layout, login transport, and connection cancellation regression files passed before and after the patch.
+- After the November 26 merge, `npm run test:local-worlds` and nine upstream regression files passed (62 tests total). An `npm start` smoke test returned HTTP 200 for the client, local-world worker modules, assets, and the updated tab-list module.
 - The integration test drove the real Connection decoder from a native Node worker over MessageChannel. It verified login ordering, a spawn column decoded by the upstream Chunk class, accepted movement, collision correction, chunk streaming and unload, authoritative material selection, placing and breaking blocks, saving position, reopening block edits, and duplicate names.
 - The integration test uses a temporary file checkpoint fixture. Real Chromium IndexedDB transactions, pointer lock, framebuffer output, and connecting to the vanilla reference server still need live verification.
 - In a two-pass Node spot check, generation and encoding for 256 columns took about 85 ms on the first pass and 69 ms on the second. The sample emitted 12,652,288 bytes in total. The timings exclude renderer, MessageChannel, storage, and browser overhead.
 
     node --test tools/test-local-world.mjs tools/test-connection-cancellation.mjs tools/test-login-transport.mjs tools/test-menu-layout-regressions.mjs
 
-The shell sandbox denied direct GitHub DNS resolution and loopback TCP connections/binds. The browser blocked the packed file URL. A runnable checkout and a browser-accessible dev origin with narrowly scoped local serving would allow a visual singleplayer check and multiplayer regression session. Use the same origin for save/reopen and verify both graphics backends on the intended hardware.
+The original development session had restrictions on GitHub access and loopback sockets. Both operations worked for the November 26 update. The user's initial screenshot verified in-world rendering in the static build. A full browser save/reopen test and graphics-backend comparison remain outstanding. Use the same origin for save/reopen and verify both graphics backends on the intended hardware.
 
 ## Scope and next verification
 
@@ -67,7 +71,7 @@ The shell sandbox denied direct GitHub DNS resolution and loopback TCP connectio
 | Chunk streaming and unloading | Verified through the existing codec and Chunk loader. |
 | Block placement and breaking | Authoritative edits and persisted states verified with a checkpoint fixture. Pointer-lock interaction pending. |
 | Save and reopen | Node worker fixture covers block edits and player position. Browser IndexedDB transactions and concurrent-tab behavior pending. |
-| Asset provisioning and rendering | Packed and static builds verified. WebGL 2 and WebGPU output pending. |
+| Asset provisioning and rendering | Packed and static builds verified. The npm server serves the client and worker files, and the user observed initial in-world rendering. Separate WebGL 2 and WebGPU validation pending. |
 | Multiplayer | Login, connection cancellation and menu regressions pass. A live join to the reference server remains pending. |
 
 Open a named world, walk and jump, cross a chunk boundary, build and remove a block, save and return, then reopen and verify the changes. Run the existing multiplayer path against the local reference server afterward.
