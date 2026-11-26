@@ -1,5 +1,5 @@
 import { Reader, Writer } from '../net/buffer.js';
-import { BUILD_CEILING, FOUNDATION_Y } from './terrain.js';
+import { isWater } from './terrain.js';
 
 export function readAction(bytes) {
   const r = new Reader(bytes);
@@ -39,8 +39,15 @@ export function unloadPacket(cx, cz) {
 }
 
 export function chunkPacket(terrain, cx, cz) {
-  const firstSection = FOUNDATION_Y >> 4;
-  const sectionCount = (BUILD_CEILING >> 4) - firstSection + 1;
+  const column = terrain.column(cx, cz);
+  const firstSection = terrain.minY >> 4;
+  let lastSection = column.lastSection;
+  if (lastSection === undefined) {
+    let top = column.states.length - 1;
+    while (top > 0 && !column.states[top]) top--;
+    lastSection = top >> 12;
+  }
+  const sectionCount = lastSection - firstSection + 1;
   const stateBytes = sectionCount * 8192;
   const lightBytes = sectionCount * 2048;
   const sections = ((1 << sectionCount) - 1) << firstSection;
@@ -49,15 +56,20 @@ export function chunkPacket(terrain, cx, cz) {
   for (let z = 0; z < 16; z++) {
     for (let x = 0; x < 16; x++) {
       let sky = 15;
-      for (let y = BUILD_CEILING; y >= FOUNDATION_Y; y--) {
-        const i = ((y - FOUNDATION_Y) << 8) | (z << 4) | x;
-        const state = terrain.get(cx * 16 + x, y, cz * 16 + z);
+      for (let y = (lastSection + 1) * 16 - 1; y >= firstSection * 16; y--) {
+        const cell = (y << 8) | (z << 4) | x;
+        const i = cell - (firstSection << 12);
+        const state = column.states[cell];
         view.setUint16(i * 2, state, true);
-        if (state) sky = 0;
+        if (state) {
+          const id = state >> 4;
+          const opacity = isWater(state) ? 3 : id === 18 ? 1 : id === 20 ? 0 : 15;
+          sky = Math.max(0, sky - opacity);
+        }
         data[stateBytes + lightBytes + (i >> 1)] |= sky << ((i & 1) * 4);
       }
     }
   }
-  data.fill(1, stateBytes + 2 * lightBytes); // A valid sky-lit biome ID for the client.
+  data.set(column.biomes, stateBytes + 2 * lightBytes);
   return chunkHeader(cx, cz, sections).varint(data.length).raw(data).build();
 }

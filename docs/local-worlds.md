@@ -1,10 +1,10 @@
 # MinecraftJS local worlds
 
-This work adds a browser-hosted building sandbox to the MinecraftJS 1.8.9 client. The initial original world, **Terrace Yard**, is a 256 × 256 block site made of seeded terraces and level paths. It starts with six building materials. Each named world stores its seed, block changes, and last saved player position.
+This work adds a browser-hosted building sandbox to the MinecraftJS 1.8.9 client. New worlds default to procedurally generated natural landscapes. The original **Terrace Yard** test site is still available as a terrain preset. Each named world stores its seed, generation options, block changes, and last saved player position.
 
 ## Start a world
 
-Open **Singleplayer → Create World**, enter a name and an optional seed, and choose **Create World**. Use the existing movement, jump, and block interaction controls. **Esc → Save and Quit** waits for the worker’s final checkpoint before returning to the menu. Reopen the same named world under **Singleplayer**. Names are unique within the browser origin. With a blank seed, the world name is the seed.
+Open **Singleplayer → Create World**, enter a name and an optional seed, select a terrain preset, and choose **Create World**. Use the existing movement, jump, and block interaction controls. **Esc → Save and Quit** waits for the worker’s final checkpoint before returning to the menu. Reopen the same named world under **Singleplayer**. Names are unique within the browser origin. Leaving the seed blank chooses a random signed 64-bit number. The Random button also generates a seed that you can edit or record. Select an existing world in the picker to view and copy its seed.
 
 Run the usual MinecraftJS development server from the client checkout. The proxy serves the application, and its existing asset loader locates your local game installation or prebuilt `client/assets/` folder.
 
@@ -17,6 +17,25 @@ The existing static and packed HTML build commands also support local worlds. Th
 
 Run the integrated-server regression suite with `npm run test:local-worlds`.
 
+## World generation
+
+| Terrain | Description |
+| --- | --- |
+| Natural | Rolling elevations, climate-dependent surface materials, forests, and lowland water. |
+| Flat | A level grass surface over soil and stone. Optional features default to off. |
+| Highlands | Greater relief, deeper valleys, rocky elevations, and snowy high ground. |
+| Broad regions | Larger landforms and climate regions. |
+| Custom | Adjustable base elevation, relief, region size, and water level. |
+| Terrace Yard | The original bounded test site. |
+
+**World options** controls trees, surface water, subterranean caverns and ore deposits, scattered stone landmarks, and whether the creative hotbar starts with materials. Each preset supplies compatible defaults. Generated water is static, and the hotbar is initialized on each login. Creative building is the supported game mode.
+
+The original landscape generator combines smooth seeded noise fields in world coordinates and places features at deterministic global-grid anchors. Signed 64-bit numeric seeds and arbitrary text seeds are supported. Text is hashed into 64 bits; decimal values outside the signed range are treated as text. A seed and identical settings regenerate the same base terrain regardless of chunk order. The algorithm has its own terrain and feature rules.
+
+Natural landscape chunks are generated lazily across the supported horizontal coordinate range and Y=0–255. A 96-column LRU cache bounds retained base terrain. Chunk packets include the sections up to the highest existing block and their biome and skylight data. Spawn selection searches for dry land with headroom. Custom water-dominated worlds can spawn above the water surface.
+
+Save version 2 records the reproducible seed string and generation settings together with per-chunk sparse edits. Version 1 records continue to use the original Terrace Yard generator, coordinate limits, and edit format. Their picker entries show the stored seed hash because the original seed string was not recorded.
+
 ## Integration
 
 | Client subsystem | Integration |
@@ -26,7 +45,7 @@ Run the integrated-server regression suite with `npm run test:local-worlds`.
 | Inventory and entities | The worker supplies a hotbar of full-cube building materials, validates slots, and uses the existing player state. Other entity behavior and wider inventory simulation are outside this sandbox build. |
 | Menus | The title screen opens a world picker and creation form. Connecting, loading, in-world and disconnect screens follow the normal client lifecycle. |
 | Assets, graphics, and audio | The patch uses upstream resource provisioning and the existing graphics and audio paths. The packed and static builds bundle the worker alongside the existing mesh worker. |
-| Settings and storage | Graphics, controls, and audio use existing settings. The worker caps its chunk radius at four. Origin-scoped IndexedDB stores snapshots using optimistic revisions. Each accepted edit is committed before confirmation. |
+| Settings and storage | Graphics, controls, and audio use existing settings. The worker supports a chunk radius of up to eight for landscapes and four for terraces. Origin-scoped IndexedDB stores snapshots using optimistic revisions. Each accepted edit is committed before confirmation. |
 
 The protocol adapter lives in local-world/protocol.js. The terrain model and checkpoint store can be exercised independently. Session start/stop and ordered commands reuse the browser-session foundation. Worker generation and streaming metrics are available at game.conn.ws.metrics, and Connection exposes packet and byte counters. Measure rendering through the upstream profiler while separately recording worker peak tick time, chunk generation time, and resident chunks.
 
@@ -53,6 +72,8 @@ The source inputs matched the upstream Git blob hashes.
 - Upstream and modified packed builds and the modified static build completed using cached npm dependencies and the local 1.8.9 asset installation.
 - Existing menu layout, login transport, and connection cancellation regression files passed before and after the patch.
 - After the November 26 merge, `npm run test:local-worlds` and nine upstream regression files passed (62 tests total). An `npm start` smoke test returned HTTP 200 for the client, local-world worker modules, assets, and the updated tab-list module.
+- The landscape update passed 70 tests, including 11 local-world tests for creation options, signed seeds, generation order, surface features, custom terrain, remote edits, version-one saves, and the worker's streamed natural and flat worlds. The npm source server served the new modules, and a temporary code-only packed build succeeded.
+- A Node benchmark generated and encoded 81 natural columns for seed `7` in 36.8, 21.2, and 14.3 ms across three passes. Each pass emitted 5,674,431 bytes. These are local generation and serialization timings; browser rendering and worker tick pacing are separate measurements.
 - The integration test drove the real Connection decoder from a native Node worker over MessageChannel. It verified login ordering, a spawn column decoded by the upstream Chunk class, accepted movement, collision correction, chunk streaming and unload, authoritative material selection, placing and breaking blocks, saving position, reopening block edits, and duplicate names.
 - The integration test uses a temporary file checkpoint fixture. Real Chromium IndexedDB transactions, pointer lock, framebuffer output, and connecting to the vanilla reference server still need live verification.
 - In a two-pass Node spot check, generation and encoding for 256 columns took about 85 ms on the first pass and 69 ms on the second. The sample emitted 12,652,288 bytes in total. The timings exclude renderer, MessageChannel, storage, and browser overhead.
@@ -66,7 +87,7 @@ The original development session had restrictions on GitHub access and loopback 
 | Feature | Current verification |
 | --- | --- |
 | Named world creation and selection | Menu routing, worker startup and duplicate names covered by tests. Browser storage and menu interaction pending. |
-| Seeded terrain | Deterministic terraces and reversible edits covered by tests. |
+| Seeded terrain | Six terrain presets, numeric and text seeds, cross-chunk determinism, custom parameters, feature switches, and sparse edits covered by tests. |
 | Spawn, movement, and collision | Protocol spawn, accepted movement and correction covered by tests. Keyboard movement and jump pending in a headed browser. |
 | Chunk streaming and unloading | Verified through the existing codec and Chunk loader. |
 | Block placement and breaking | Authoritative edits and persisted states verified with a checkpoint fixture. Pointer-lock interaction pending. |
@@ -76,4 +97,4 @@ The original development session had restrictions on GitHub access and loopback 
 
 Open a named world, walk and jump, cross a chunk boundary, build and remove a block, save and return, then reopen and verify the changes. Run the existing multiplayer path against the local reference server afterward.
 
-Current storage keeps a full snapshot of edits per world. A larger editable area needs chunk-level writes and recovery tests before increasing the map size. Add IndexedDB conflict and crash-recovery tests in a browser before extending persistence. The sandbox uses fixed lighting and a building palette. Legacy-world import and export, time and weather, crafting and survival, mobs, fluids, redstone, and additional dimensions are outside this integration.
+Current storage keeps a full snapshot of sparse edits per world. Highly edited worlds will benefit from chunk-level IndexedDB writes and recovery tests. The sandbox uses static vertical skylight and a building palette. Legacy-world import and export, time and weather, crafting and survival, mobs, fluid simulation, redstone, and additional dimensions are outside this integration.

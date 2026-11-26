@@ -1,9 +1,13 @@
+import { LandscapeTerrain } from './landscape.js';
+import { worldSettings } from './world-settings.js';
+
 export const CHUNK_LIMIT = 8;
 export const FOUNDATION_Y = 48;
 export const BUILD_CEILING = 111;
 
 // Protocol-facing block IDs for solid, full-cube materials in the building palette.
 export const MATERIALS = [1, 5, 24, 35, 45, 98];
+export const PLACEABLE_MATERIALS = new Set([...MATERIALS, 2, 3, 12, 13, 15, 16, 17, 18, 20, 80]);
 const SOLID_BASE = 7 << 4;
 
 function hash(x, z, seed) {
@@ -27,6 +31,26 @@ export class TerraceTerrain {
   constructor(seed, edits = []) {
     this.seed = seed;
     this.edits = new Map(edits);
+    this.chunkLimit = CHUNK_LIMIT;
+    this.viewDistanceLimit = 4;
+    this.minY = FOUNDATION_Y;
+    this.maxY = BUILD_CEILING;
+  }
+
+  contains(x, z) { return inside(x, z); }
+  get editCount() { return this.edits.size; }
+
+  spawn() { return { x: 0.5, y: 56, z: 0.5, yaw: 0, pitch: 0 }; }
+
+  column(cx, cz) {
+    const states = new Uint16Array(65536);
+    const biomes = new Uint8Array(256).fill(1);
+    for (let y = this.minY; y <= this.maxY; y++) {
+      for (let z = 0; z < 16; z++) {
+        for (let x = 0; x < 16; x++) states[y * 256 + z * 16 + x] = this.get(cx * 16 + x, y, cz * 16 + z);
+      }
+    }
+    return { states, biomes, lastSection: this.maxY >> 4 };
   }
 
   surface(x, z) {
@@ -61,6 +85,18 @@ export class TerraceTerrain {
   }
 }
 
+export function createTerrain(state) {
+  if (state.version === 1) return new TerraceTerrain(state.seed, state.edits);
+  const settings = worldSettings(state.settings);
+  if (settings.worldType === 'terraces') return new TerraceTerrain(seedNumber(state.seed), state.edits);
+  return new LandscapeTerrain(state.seed, settings, state.edits);
+}
+
+export function isWater(state) {
+  const id = state >> 4;
+  return id === 8 || id === 9;
+}
+
 // A bounded coordinate key. Callers validate the world bounds before setting edits.
 function pack(x, y, z) {
   return (y * 256 + z + 128) * 256 + x + 128;
@@ -74,14 +110,15 @@ export function playerBox({ x, y, z }) {
 export function collides(terrain, position) {
   const box = playerBox(position);
   const epsilon = 0.00001;
-  if (!inside(box[0] + epsilon, box[2] + epsilon) ||
-      !inside(box[3] - epsilon, box[5] - epsilon) ||
-      box[1] < FOUNDATION_Y || box[4] > BUILD_CEILING + 12) return true;
+  if (!terrain.contains(box[0] + epsilon, box[2] + epsilon) ||
+      !terrain.contains(box[3] - epsilon, box[5] - epsilon) ||
+      box[1] < terrain.minY || box[4] > terrain.maxY + 12) return true;
 
   for (let y = Math.floor(box[1] + epsilon); y <= Math.floor(box[4] - epsilon); y++) {
     for (let z = Math.floor(box[2] + epsilon); z <= Math.floor(box[5] - epsilon); z++) {
       for (let x = Math.floor(box[0] + epsilon); x <= Math.floor(box[3] - epsilon); x++) {
-        if (terrain.get(x, y, z)) return true;
+        const state = terrain.get(x, y, z);
+        if (state && !isWater(state)) return true;
       }
     }
   }

@@ -9,9 +9,12 @@ import { Game } from '../client/js/game/game.js';
 import { loadLocalWorld } from '../client/js/local-world/server.js';
 import { serveLocalSession } from '../client/js/local-world/session.js';
 import { LocalWorldSocket } from '../client/js/local-world/socket.js';
-import { TerraceTerrain, seedNumber } from '../client/js/local-world/terrain.js';
+import { TerraceTerrain, createTerrain, collides, seedNumber } from '../client/js/local-world/terrain.js';
+import { describeWorld, resolveSeed, seedWords, worldSettings } from '../client/js/local-world/world-settings.js';
+import { chunkPacket } from '../client/js/local-world/protocol.js';
+import { CreateLocalWorldScreen } from '../client/js/gui/screens/local-worlds.js';
 import { Connection } from '../client/js/net/connection.js';
-import { C } from '../client/js/net/packets.js';
+import { C, decodePacket } from '../client/js/net/packets.js';
 import { Chunk } from '../client/js/world/chunk.js';
 
 function fileStore(file) {
@@ -83,7 +86,7 @@ if (!isMainThread) {
       const file = join(directory, 'terrace.json');
       t.after(() => rm(directory, { recursive: true, force: true }));
       const platform = { createWorker: () => nodeWorker(file) };
-      const live = await connect(t, platform, { name: 'Terrace', seed: 'plateaus', create: true });
+      const live = await connect(t, platform, { name: 'Terrace', seed: 'plateaus', settings: { worldType: 'terraces' }, create: true });
       assert.equal(live.control[0].type, 'login_success');
       assert.equal(live.control[0].username, 'Builder');
       assert.deepEqual(live.packets.map(p => p.name).slice(0, 5), ['login', 'update_time', 'spawn_position', 'update_health', 'abilities']);
@@ -154,6 +157,218 @@ if (!isMainThread) {
     assert.equal(terrain.get(0, 55, 0), 0);
     terrain.set(0, 55, 0, base);
     assert.deepEqual(terrain.snapshot(), []);
+  });
+
+  test('world creation carries a seed, terrain preset and optional features through the screen stack', () => {
+    let options;
+    const game = {
+      gui: { width: 320, height: 240 },
+      screens: { open(screen) { this.current = screen; screen.buttons = []; screen.fields = []; screen.init(); } },
+      connectLocalWorld(value) { options = value; },
+    };
+    const create = new CreateLocalWorldScreen(game, null);
+    game.screens.open(create);
+    assert.equal(create.settings.worldType, 'natural');
+    create.nameField.setText('Mountain workshop');
+    create.buttons.find(b => b.id === 2).onClick();
+    assert.match(create.seedField.text, /^-?\d+$/);
+    create.seedField.setText('-9223372036854775808');
+    create.buttons.find(b => b.id === 3).onClick();
+    assert.equal(create.settings.worldType, 'flat');
+    create.buttons.find(b => b.id === 4).onClick();
+    const more = game.screens.current;
+    assert.equal(more.buttons.find(b => b.id === 1).enabled, false); // Surface water is unavailable on the flat preset.
+    more.buttons.find(b => b.id === 0).onClick();
+    more.buttons.find(b => b.id === 4).onClick();
+    more.buttons.find(b => b.id === 5).onClick();
+    assert.equal(game.screens.current, create);
+    create.buttons.find(b => b.id === 0).onClick();
+    assert.deepEqual(options, {
+      name: 'Mountain workshop', seed: '-9223372036854775808', create: true,
+      settings: { worldType: 'flat', trees: true, lakes: false, caverns: false, landmarks: false, starterMaterials: false },
+    });
+    for (let i = 0; i < 3; i++) create.buttons.find(b => b.id === 3).onClick();
+    assert.equal(create.settings.worldType, 'custom');
+    create.buttons.find(b => b.id === 4).onClick();
+    game.screens.current.buttons.find(b => b.id === 6).onClick();
+    const sliders = game.screens.current;
+    sliders.buttons.find(b => b.id === 0).onChange(1);
+    sliders.buttons.find(b => b.id === 3).onChange(0);
+    sliders.buttons.find(b => b.id === 4).onClick();
+    game.screens.current.buttons.find(b => b.id === 5).onClick();
+    create.buttons.find(b => b.id === 0).onClick();
+    assert.equal(options.settings.worldType, 'custom');
+    assert.equal(options.settings.baseHeight, 136);
+    assert.equal(options.settings.waterLevel, 16);
+    assert.equal(options.seed, '-9223372036854775808');
+  });
+
+  test('custom elevation and water level affect generated columns, and flooded worlds have clear spawn space', () => {
+    const base = { version: 2, seed: 'custom', edits: [] };
+    const dry = createTerrain({ ...base, settings: worldSettings({ worldType: 'custom', baseHeight: 136, relief: 2, waterLevel: 16 }) });
+    const wet = createTerrain({ ...base, settings: worldSettings({ worldType: 'custom', baseHeight: 32, relief: 2, waterLevel: 112 }) });
+    assert.ok(dry.surface(0, 0) > wet.surface(0, 0) + 80);
+    assert.equal(wet.get(0, 112, 0), 9 << 4);
+    assert.equal(dry.get(0, 112, 0), 1 << 4);
+    assert.ok(wet.spawn().y >= 113);
+    assert.equal(collides(wet, wet.spawn()), false);
+    assert.throws(() => worldSettings({ worldType: 'custom', relief: 81 }), /Invalid custom terrain/);
+  });
+
+  test('signed 64-bit and text seeds are stable, and blank seeds resolve to a reproducible value', () => {
+    assert.equal(resolveSeed(' +0007 '), '7');
+    assert.equal(resolveSeed('-9223372036854775808'), '-9223372036854775808');
+    assert.equal(resolveSeed('  forest 🌲  '), '  forest 🌲  ');
+    assert.deepEqual(seedWords('7'), [7, 0]);
+    assert.deepEqual(seedWords('4294967303'), [7, 1]);
+    assert.deepEqual(seedWords('-1'), [0xffffffff, 0xffffffff]);
+    const random = resolveSeed('');
+    assert.equal(resolveSeed(random), random);
+    assert.match(random, /^-?\d+$/);
+    assert.equal(BigInt.asIntN(64, BigInt(random)), BigInt(random));
+    assert.deepEqual(seedWords('  forest 🌲  '), seedWords('  forest 🌲  '));
+    assert.notDeepEqual(seedWords('forest'), seedWords('Forest'));
+  });
+
+  test('natural terrain has coherent, seed-specific features and deterministic cross-chunk generation', () => {
+    const state = { version: 2, seed: '7', settings: worldSettings(), edits: [] };
+    const terrain = createTerrain(state);
+    const reversed = createTerrain(state);
+    const coordinates = [[-4, 3], [-1, 0], [0, 0], [1, 0], [4, -4], [4000, -4000]];
+    const expected = coordinates.map(([x, z]) => chunkPacket(terrain, x, z));
+    for (let i = coordinates.length - 1; i >= 0; i--) {
+      const [x, z] = coordinates[i];
+      assert.deepEqual(chunkPacket(reversed, x, z), expected[i]);
+    }
+    const other = createTerrain({ ...state, seed: '4294967303' });
+    assert.notDeepEqual(chunkPacket(other, 0, 0), expected[2]);
+    const flat = createTerrain({ ...state, settings: worldSettings({ worldType: 'flat' }) });
+    const mountains = createTerrain({ ...state, settings: worldSettings({ worldType: 'highlands' }) });
+    const broad = createTerrain({ ...state, settings: worldSettings({ worldType: 'wide' }) });
+    const heights = t => Array.from({ length: 141 }, (_, i) => t.surface(i - 70, 3));
+    const range = h => Math.max(...h) - Math.min(...h);
+    assert.equal(range(heights(flat)), 0);
+    assert.ok(range(heights(terrain)) > 8);
+    assert.ok(range(heights(mountains)) > range(heights(terrain)));
+    assert.notDeepEqual(heights(broad), heights(terrain));
+    for (let x = -65; x <= 63; x++) assert.ok(Math.abs(terrain.surface(x, 2) - terrain.surface(x + 1, 2)) <= 2);
+
+    const counts = new Map();
+    let cavernFound = false;
+    const plain = createTerrain({ ...state, settings: worldSettings({ trees: false, lakes: false, caverns: false, landmarks: false }) });
+    for (let cz = -4; cz <= 4; cz++) {
+      for (let cx = -4; cx <= 4; cx++) {
+        const states = terrain.column(cx, cz).states;
+        const without = plain.column(cx, cz).states;
+        for (let i = 0; i < states.length; i++) {
+          counts.set(states[i] >> 4, (counts.get(states[i] >> 4) ?? 0) + 1);
+          if (states[i] === 0 && without[i] === 16) cavernFound = true;
+        }
+        assert.ok(!without.some(state => [9, 15, 16, 17, 18, 98].includes(state >> 4)));
+      }
+    }
+    for (const id of [9, 15, 16, 17, 18, 98]) assert.ok(counts.get(id) > 0, 'Missing generated block type ' + id);
+    assert.ok(cavernFound);
+    assert.equal(terrain.minY, 0);
+    assert.equal(terrain.maxY, 255);
+    assert.equal(collides(terrain, terrain.spawn()), false);
+    assert.ok(terrain.cache.size <= 96);
+  });
+
+  test('distant and upper-section edits survive world regeneration and packet encoding', () => {
+    const state = { version: 2, seed: 'building', settings: worldSettings(), edits: [] };
+    const terrain = createTerrain(state);
+    const x = -64001, y = 255, z = 127999;
+    const base = terrain.get(x, y, z);
+    terrain.set(x, y, z, 45 << 4);
+    assert.equal(terrain.editCount, 1);
+    assert.equal(terrain.get(x, y, z), 45 << 4);
+    const reopened = createTerrain({ ...state, edits: terrain.snapshot() });
+    const cx = Math.floor(x / 16), cz = Math.floor(z / 16);
+    const packet = decodePacket(chunkPacket(reopened, cx, cz));
+    const chunk = new Chunk(cx, cz, true);
+    assert.equal(chunk.load(packet.chunkData, 0, packet.bitMap, true, true), packet.chunkData.length);
+    assert.equal(chunk.getState(x & 15, y, z & 15), 45 << 4);
+    assert.equal(chunk.getSkyLight(x & 15, y, z & 15), 0);
+    reopened.set(x, y, z, base);
+    assert.equal(reopened.editCount, 0);
+    assert.deepEqual(reopened.snapshot(), []);
+  });
+
+  test('new workers persist random seeds and stream beyond the former world boundary', { timeout: 8000 }, async t => {
+    const directory = await mkdtemp(join(tmpdir(), 'local-landscape-test-'));
+    const file = join(directory, 'world.json');
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    const platform = { createWorker: () => nodeWorker(file) };
+    const live = await connect(t, platform, { name: 'Flat', seed: '', settings: { worldType: 'flat', starterMaterials: false }, create: true });
+    const state = JSON.parse(await readFile(file, 'utf8')).state;
+    assert.equal(state.version, 2);
+    assert.equal(state.settings.worldType, 'flat');
+    assert.equal(state.settings.starterMaterials, false);
+    assert.equal(describeWorld(state).seed, state.seed);
+    assert.equal(resolveSeed(state.seed), state.seed);
+    const position = live.packets.find(p => p.name === 'position');
+    assert.deepEqual([position.x, position.y, position.z], [0.5, 64, 0.5]);
+    assert.equal(live.packets.filter(p => p.name === 'set_slot' && p.item).length, 0);
+    live.conn.send(C.creativeSlot(36, { id: 2, count: 3, damage: 0 }));
+    live.conn.send(C.blockPlace(2, 63, 0, 1, { id: 2, count: 1, damage: 0 }, 8, 8, 8));
+    await until(() => live.packets.some(p => p.name === 'block_change' && p.state === 2 << 4));
+    live.conn.send(C.position(0.5, 66, 0.5, true));
+    for (let x = 8.5; x <= 160.5; x += 8) live.conn.send(C.position(x, 66, 0.5, true));
+    await until(() => live.packets.some(p => p.name === 'map_chunk' && p.x >= 10 && p.bitMap));
+    await live.conn.close();
+    const saved = JSON.parse(await readFile(file, 'utf8')).state;
+    assert.deepEqual(saved.settings, state.settings);
+    assert.equal(saved.seed, state.seed);
+    assert.equal(saved.position.x, 160.5);
+    assert.equal(createTerrain(saved).get(2, 64, 0), 2 << 4);
+    const reopened = await connect(t, platform, { name: 'Flat' });
+    assert.equal(reopened.packets.find(p => p.name === 'position').x, saved.position.x);
+    await reopened.conn.close();
+  });
+
+  test('the default world worker sends the seeded natural spawn and terrain, and reloads them', { timeout: 8000 }, async t => {
+    const directory = await mkdtemp(join(tmpdir(), 'natural-landscape-test-'));
+    const file = join(directory, 'world.json');
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    const platform = { createWorker: () => nodeWorker(file) };
+    const seed = '7';
+    const live = await connect(t, platform, { name: 'Natural', seed, create: true });
+    const record = JSON.parse(await readFile(file, 'utf8'));
+    const terrain = createTerrain(record.state);
+    assert.equal(record.state.seed, seed);
+    assert.equal(record.state.settings.worldType, 'natural');
+    const spawn = terrain.spawn();
+    const position = live.packets.find(p => p.name === 'position');
+    assert.deepEqual([position.x, position.y, position.z], [spawn.x, spawn.y, spawn.z]);
+    assert.equal(collides(terrain, spawn), false);
+    const column = live.packets.find(p => p.name === 'map_chunk');
+    const expected = decodePacket(chunkPacket(terrain, Math.floor(spawn.x / 16), Math.floor(spawn.z / 16)));
+    assert.deepEqual(column.chunkData, expected.chunkData);
+    assert.equal(live.decodeErrors.length, 0);
+    await live.conn.close();
+    const reopened = await connect(t, platform, { name: 'Natural' });
+    assert.deepEqual(reopened.packets.find(p => p.name === 'map_chunk').chunkData, expected.chunkData);
+    await reopened.conn.close();
+  });
+
+  test('version-one saves retain their original terrain, seed hash and existing edits', { timeout: 8000 }, async t => {
+    const directory = await mkdtemp(join(tmpdir(), 'legacy-terrace-test-'));
+    const file = join(directory, 'world.json');
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    const seed = seedNumber('old seed text');
+    const terrain = new TerraceTerrain(seed);
+    terrain.set(2, 56, 0, 45 << 4);
+    const state = { version: 1, seed, edits: terrain.snapshot(), position: terrain.spawn() };
+    await fileStore(file).create('Old Terrace', state);
+    assert.deepEqual(describeWorld(state), { worldType: 'terraces', seed: String(seed), legacySeed: true });
+    const live = await connect(t, { createWorker: () => nodeWorker(file) }, { name: 'Old Terrace' });
+    const packet = live.packets.find(p => p.name === 'map_chunk');
+    const chunk = new Chunk(0, 0, true);
+    chunk.load(packet.chunkData, 0, packet.bitMap, true, true);
+    assert.equal(chunk.getState(2, 56, 0), 45 << 4);
+    assert.equal(chunk.getState(0, 55, 0), 98 << 4);
+    await live.conn.close();
   });
 }
 

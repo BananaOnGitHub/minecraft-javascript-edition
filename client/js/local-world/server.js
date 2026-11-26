@@ -1,9 +1,10 @@
 import { Writer } from '../net/buffer.js';
 import { WORLD_DATABASE, openCheckpointStore } from './checkpoints.js';
 import { blockPacket, chunkPacket, positionPacket, readAction, slotPacket, unloadPacket } from './protocol.js';
-import { BUILD_CEILING, CHUNK_LIMIT, FOUNDATION_Y, MATERIALS, TerraceTerrain, collides, inside, playerBox, seedNumber } from './terrain.js';
+import { MATERIALS, PLACEABLE_MATERIALS, createTerrain, collides, isWater, playerBox } from './terrain.js';
+import { resolveSeed, worldSettings } from './world-settings.js';
 
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 const FACE_OFFSETS = [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]];
 
 export async function loadLocalWorld(options, emit, openStore = openCheckpointStore) {
@@ -18,19 +19,21 @@ export async function loadLocalWorld(options, emit, openStore = openCheckpointSt
     if (options.create) {
       const state = {
         version: SAVE_VERSION,
-        seed: seedNumber(seed || name),
+        seed: resolveSeed(seed),
+        settings: worldSettings(options.settings),
         edits: [],
-        position: { x: 0.5, y: 56, z: 0.5, yaw: 0, pitch: 0 },
       };
+      state.spawn = createTerrain(state).spawn();
+      state.position = state.spawn;
       const meta = await store.create(name, state);
       record = { ...meta, state };
     } else {
       record = await store.load(name);
       if (!record) throw new Error('This local world could not be found.');
-      if (record.state.version !== SAVE_VERSION) throw new Error('This world uses a different save format.');
+      if (record.state.version !== 1 && record.state.version !== SAVE_VERSION) throw new Error('This world uses a different save format.');
     }
 
-    return new TerraceSession(store, record, emit);
+    return new LocalWorldSession(store, record, emit);
   } catch (error) {
     store.close();
     if (error.name === 'ConstraintError') throw new Error('A world with this name already exists.');
@@ -38,15 +41,17 @@ export async function loadLocalWorld(options, emit, openStore = openCheckpointSt
   }
 }
 
-class TerraceSession {
+class LocalWorldSession {
   constructor(store, record, emit) {
     this.store = store;
     this.record = record;
     this.emit = emit;
-    this.terrain = new TerraceTerrain(record.state.seed, record.state.edits);
+    this.terrain = createTerrain(record.state);
+    this.settings = record.state.version === 1 ? worldSettings({ worldType: 'terraces' }) : worldSettings(record.state.settings);
+    this.spawn = record.state.spawn ?? this.terrain.spawn();
     this.position = record.state.position;
     this.savedPosition = this.position;
-    this.hotbar = Array.from({ length: 9 }, (_, i) => MATERIALS[i] ? { id: MATERIALS[i], count: 64, damage: 0 } : null);
+    this.hotbar = Array.from({ length: 9 }, (_, i) => this.settings.starterMaterials && MATERIALS[i] ? { id: MATERIALS[i], count: 64, damage: 0 } : null);
     this.selectedSlot = 0;
     this.loaded = new Map();
     this.distance = 2;
@@ -65,9 +70,10 @@ class TerraceSession {
   start() {
     if (this.timer) return;
     this.control('login_success', { username: 'Builder', uuid: '70795e02-56e1-4881-a673-6c0b027f3c3e' });
-    this.send(new Writer().varint(0x01).i32(1).u8(1).i8(0).u8(0).u8(1).string('flat').bool(false).build());
+    const levelType = ['terraces', 'flat'].includes(this.settings.worldType) ? 'flat' : 'default';
+    this.send(new Writer().varint(0x01).i32(1).u8(1).i8(0).u8(0).u8(1).string(levelType).bool(false).build());
     this.send(new Writer().varint(0x03).i64(0).i64(-6000).build());
-    this.send(new Writer().varint(0x05).position(0, 56, 0).build());
+    this.send(new Writer().varint(0x05).position(Math.floor(this.spawn.x), this.spawn.y, Math.floor(this.spawn.z)).build());
     this.send(new Writer().varint(0x06).f32(20).varint(20).f32(5).build());
     this.send(new Writer().varint(0x39).i8(0x0d).f32(0.05).f32(0.1).build());
     this.hotbar.forEach((item, i) => this.send(slotPacket(36 + i, item)));
@@ -86,7 +92,7 @@ class TerraceSession {
         ...this.metrics,
         queuedChunks: this.chunks.length,
         loadedChunks: this.loaded.size,
-        blockEdits: this.terrain.edits.size,
+        blockEdits: this.terrain.editCount,
       } });
     }
   }
@@ -94,8 +100,9 @@ class TerraceSession {
   scheduleChunks() {
     const cx = Math.floor(this.position.x / 16), cz = Math.floor(this.position.z / 16);
     const needed = new Map();
-    for (let z = Math.max(-CHUNK_LIMIT, cz - this.distance); z <= Math.min(CHUNK_LIMIT - 1, cz + this.distance); z++) {
-      for (let x = Math.max(-CHUNK_LIMIT, cx - this.distance); x <= Math.min(CHUNK_LIMIT - 1, cx + this.distance); x++) {
+    const limit = this.terrain.chunkLimit;
+    for (let z = Math.max(-limit, cz - this.distance); z <= Math.min(limit - 1, cz + this.distance); z++) {
+      for (let x = Math.max(-limit, cx - this.distance); x <= Math.min(limit - 1, cx + this.distance); x++) {
         needed.set(x + ',' + z, { x, z, distance: (x - cx) ** 2 + (z - cz) ** 2 });
       }
     }
@@ -136,7 +143,7 @@ class TerraceSession {
   }
 
   editable({ x, y, z }) {
-    return inside(x, z) && y > FOUNDATION_Y && y <= BUILD_CEILING;
+    return this.terrain.contains(x, z) && y > this.terrain.minY && y <= this.terrain.maxY;
   }
 
   withinReach({ x, y, z }) {
@@ -146,7 +153,7 @@ class TerraceSession {
 
   async edit(target, state, allowed) {
     const { x, y, z } = target;
-    if (!inside(x, z) || y < FOUNDATION_Y || y > BUILD_CEILING) return;
+    if (!this.terrain.contains(x, z) || y < this.terrain.minY || y > this.terrain.maxY) return;
     const oldState = this.terrain.get(x, y, z);
     if (allowed && state !== oldState) {
       this.terrain.set(x, y, z, state);
@@ -170,8 +177,10 @@ class TerraceSession {
     const [x0, y0, z0, x1, y1, z1] = playerBox(this.position);
     const occupied = next.x < x1 && next.x + 1 > x0 && next.y < y1 &&
       next.y + 1 > y0 && next.z < z1 && next.z + 1 > z0;
+    const clicked = this.terrain.get(x, y, z);
+    const existing = this.terrain.get(next.x, next.y, next.z);
     const allowed = !!item && this.editable(next) && this.withinReach(target) && !occupied &&
-      this.terrain.get(x, y, z) !== 0 && this.terrain.get(next.x, next.y, next.z) === 0;
+      clicked !== 0 && !isWater(clicked) && (existing === 0 || isWater(existing));
     return this.edit(next, item ? (item.id << 4) | item.damage : 0, allowed);
   }
 
@@ -180,9 +189,9 @@ class TerraceSession {
       if (slot >= 0 && slot < 36) this.send(slotPacket(slot, null));
       return;
     }
-    if (!item || MATERIALS.includes(item.id)) {
+    if (!item || PLACEABLE_MATERIALS.has(item.id)) {
       this.hotbar[slot - 36] = item && {
-        id: item.id, count: 64, damage: item.id === 35 ? item.damage & 15 : 0,
+        id: item.id, count: 64, damage: item.id === 35 ? item.damage & 15 : [17, 18].includes(item.id) ? item.damage & 3 : 0,
       };
     }
     this.send(slotPacket(slot, this.hotbar[slot - 36]));
@@ -203,7 +212,7 @@ class TerraceSession {
         break;
       case 'slot': return this.setSlot(action);
       case 'distance': {
-        const distance = Math.max(2, Math.min(4, action.distance));
+        const distance = Math.max(2, Math.min(this.terrain.viewDistanceLimit, action.distance));
         if (distance !== this.distance) {
           this.distance = distance;
           this.scheduleChunks();
