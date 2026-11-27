@@ -135,3 +135,47 @@ test('dead bushes, pumpkins and melons match native fixtures', async () => {
   }
   assert.equal(fixture.cases.length,36);
 });
+
+test('vine columns match native placements and RNG against a chunk-edge wall', async () => {
+  const {generateVines189}=await import('../client/js/local-world/generation/v1_8_9/decoration.js');
+  const fixture=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-decoration-vines.json.gz',import.meta.url))));
+  for(const c of fixture.cases) {
+    const blocks=new Map(),key=(x,y,z)=>`${x},${y},${z}`;
+    const base=(x,y)=>c.wall&&x===c.ox+1&&y>=64&&y<128?16:y<63?16:y===63?c.surface:0;
+    const world={get:(x,y,z)=>blocks.get(key(x,y,z))??base(x,y),set:(x,y,z,s)=>blocks.set(key(x,y,z),s)};
+    const random=new JavaRandom(BigInt(c.seed));
+    assert.equal(generateVines189(world,random,c.ox,c.oy,c.oz,(w,x,y,z)=>w.get(x,y,z)===16),c.ok);
+    assert.equal(random.nextInt(),c.rngAfter);
+    const actual=[];for(let y=55;y<130;y++)for(let dz=-8;dz<=8;dz++)for(let dx=-8;dx<=8;dx++) {
+      const s=world.get(c.ox+dx,y,c.oz+dz);if(s!==base(c.ox+dx,y))actual.push([dx,y-c.oy,dz,s]);
+    }
+    assert.deepEqual(actual,c.blocks,`seed=${c.seed}, wall=${c.wall}, y=${c.oy}`);
+  }
+  assert.equal(fixture.cases.length,12);
+});
+
+test('small mushrooms match native fixtures and caller RNG with explicit light predicate', async () => {
+  const {generateSmallMushroomPatch189}=await import('../client/js/local-world/generation/v1_8_9/decoration.js');
+  const fixture=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-decoration-mushrooms.json.gz',import.meta.url))));
+  for(const c of fixture.cases) {
+    const blocks=new Map(),key=(x,y,z)=>`${x},${y},${z}`,base=y=>y<63?16:y===63?c.surface:0;
+    const world={get:(x,y,z)=>blocks.get(key(x,y,z))??base(y),set:(x,y,z,s)=>blocks.set(key(x,y,z),s)};
+    const r=new JavaRandom(BigInt(c.seed)),kind=c.kind==='decorator-t'?'brown':'red';
+    const canPlace=(w,x,y,z)=>w.get(x,y-1,z)===1760||w.get(x,y-1,z)===50;
+    assert.equal(generateSmallMushroomPatch189(world,r,c.ox,c.oy,c.oz,kind,canPlace),c.ok);
+    assert.equal(r.nextInt(),c.rngAfter);
+    const actual=[];for(let y=55;y<80;y++)for(let dz=-8;dz<=8;dz++)for(let dx=-8;dx<=8;dx++) {
+      const s=world.get(c.ox+dx,y,c.oz+dz);if(s!==base(y))actual.push([dx,y-c.oy,dz,s]);
+    }
+    assert.deepEqual(actual,c.blocks,`${kind} seed=${c.seed}, surface=${c.surface}, y=${c.oy}`);
+  }
+  assert.equal(fixture.cases.length,36);
+  const previous=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-decoration-patches.json.gz',import.meta.url))));
+  for(const c of previous.cases.filter(c=>['decorator-t','decorator-u'].includes(c.kind))) {
+    const world={get:(x,y,z)=>y<63?16:y===63?c.surface:0,set:()=>assert.fail('Unexpected mushroom placement')};
+    const r=new JavaRandom(BigInt(c.seed));
+    assert.equal(generateSmallMushroomPatch189(world,r,c.ox,c.oy,c.oz,c.kind==='decorator-t'?'brown':'red',()=>false),c.ok);
+    assert.equal(r.nextInt(),c.rngAfter);
+    assert.equal(c.blocks.length,0);
+  }
+});

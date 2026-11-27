@@ -30,6 +30,13 @@ export function generateFlowerPatch189(world, random, x, y, z, state, canPlace) 
   return true;
 }
 
+// Mushroom placement depends on light and block support. The caller supplies
+// the exact predicate, allowing a later population world to provide lighting.
+export function generateSmallMushroomPatch189(world,random,x,y,z,kind,canPlace) {
+  if(kind!=='brown'&&kind!=='red')throw new RangeError('Unknown mushroom feature');
+  return generateFlowerPatch189(world,random,x,y,z,(kind==='brown'?39:40)<<4,canPlace);
+}
+
 // Tall grass and ferns descend through air and leaves before scattering.
 export function generateTallGrassPatch189(world,random,x,y,z,variant) {
   if(variant!==1&&variant!==2)throw new RangeError('Invalid tall grass variant');
@@ -67,6 +74,23 @@ export function generateFruitPatch189(world,random,x,y,z,kind) {
     if(by<1||by>=256||world.get(bx,by,bz)!==0||(world.get(bx,by-1,bz)>>4)!==2)continue;
     const metadata=kind==='pumpkin'?(random.nextInt(4)+2)%4:0;
     world.set(bx,by,bz,((kind==='pumpkin'?86:103)<<4)|metadata);
+  }
+  return true;
+}
+
+// Vines grow upward against the first suitable adjacent support. The caller's
+// predicate supplies the world's block support/solidity rules.
+export function generateVines189(world,random,x,y,z,canAttach) {
+  for(;y<128;y++) {
+    if(y<0)continue;
+    if(world.get(x,y,z)===0) {
+      for(const [dx,dz,meta] of [[0,-1,4],[1,0,2],[0,1,1],[-1,0,8]]) {
+        if(canAttach(world,x+dx,y,z+dz)) {world.set(x,y,z,(106<<4)|meta);break;}
+      }
+    } else {
+      x+=random.nextInt(4)-random.nextInt(4);
+      z+=random.nextInt(4)-random.nextInt(4);
+    }
   }
   return true;
 }

@@ -185,6 +185,8 @@ node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/deposits.json.gz deposits
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/grass.json.gz grass
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/plants.json.gz plants
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/vines.json.gz vines
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/mushrooms.json.gz mushrooms
 ```
 
 The fixtures record the server and probe SHA-256 hashes.
@@ -235,6 +237,20 @@ native server. Other soils, light, and obstructions require additional checks.
 Runtime feature class names for probes were identified using the 1.8.9 class
 mapping in [Zffu/mappings](https://github.com/Zffu/mappings).
 
-Springs, flowers' biome selection, vines, mushrooms, giant mushrooms, and biome-specific
+`generateVines189(world, random, x, y, z, canAttach)` matches 12 native
+wall/open-air cases with three seeds and two heights. The support predicate is
+supplied by the caller. Blocked starting points, competing support faces, and
+all support materials remain unverified. Vine face conventions were informed
+by MIT Glowstone `CocoaTree.java`; the upward growth behavior was independently
+determined through native numerical fixtures.
+
+`generateSmallMushroomPatch189(world, random, x, y, z, kind, canPlace)` matches
+36 additional native cases on mycelium, podzol and grass, and 24 previous
+unsuccessful observations. The caller supplies the light/support predicate;
+the fixtures cover bright open-air conditions, not real dark-world lighting.
+Its scatter loop uses the previously verified flower routine; MIT Glowstone
+`MushroomDecorator.java` informed the light and substrate distinction.
+
+Springs, flowers' biome selection, giant mushrooms, and biome-specific
 features remain unimplemented and unvalidated. The population planner's semantics
 differ from legacy population; these independent features are not connected to it.
