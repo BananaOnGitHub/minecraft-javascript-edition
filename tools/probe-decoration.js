@@ -93,6 +93,7 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
     }
     if(featureMode==="vines") specs=[{kind:'vines',surface:32,variant:0,wall:true},{kind:'vines',surface:32,variant:0,wall:false}];
     if(featureMode==="mushrooms") {specs=[];for each(var name in ['t','u'])for each(var ground in [1760,50,32])specs.push({kind:'decorator-'+name,surface:ground,variant:0});}
+    if(featureMode==="springs") {specs=[];for each(var liquid in ['flowing_water','flowing_lava'])for(var shape=0;shape<4;shape++)specs.push({kind:'spring',surface:32,variant:shape,liquid:liquid});}
     var decorator=Java.type('ady')['e(int)'](1).as;
     for(var si=0;si<specs.length;si++) for(var ji=0;ji<3;ji++) for(var hi=0;hi<2;hi++) {
       var spec=specs[si],seed=[1,7,12345][ji],cx=400+si*12+ji*3,cz=400+hi*4;
@@ -118,20 +119,34 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
         }
         wallChunk.b();
       }
+      if(spec.kind==='spring') {
+        var stonePositions=[[0,-1,0],[0,1,0],[-1,0,0],[0,0,-1],[0,0,1]];
+        if(spec.variant===1)stonePositions.pop();
+        if(spec.variant===2)stonePositions.push([1,0,0]);
+        if(spec.variant===3)stonePositions.push([0,0,0]);
+        for each(var pos in stonePositions) {
+          var wx=ox+pos[0],wy=oy+pos[1],wz=oz+pos[2],ch=world["a(int,int)"](wx>>4,wz>>4),secs=ch.h(),sy=wy>>4;
+          if(secs[sy]===null)secs[sy]=new Ebs(sy*16,true);
+          secs[sy].g()[((wy&15)*256)+((wz&15)*16)+(wx&15)]=java.lang.Character.valueOf('\u0010');
+          secs[sy].e();ch.b();
+        }
+      }
       var gen;
       if(spec.kind==='double') {gen=new DoublePlant();gen.a(Kind.values()[spec.variant]);}
       else if(spec.kind==='bush')gen=new (Java.type('aoq'))();
       else if(spec.kind==='pumpkin')gen=new (Java.type('apl'))();
       else if(spec.kind==='melon')gen=new (Java.type('aph'))();
+      else if(spec.kind==='spring')gen=new (Java.type('apr'))(Java.type('afh').b(spec.liquid));
       else if(spec.kind==='vines')gen=new (Java.type('apw'))();
       else if(spec.kind==='grass')gen=new (Java.type('apu'))(Java.type('akc$a').values()[spec.variant]);
       else {var field=decorator.getClass().getDeclaredField(spec.kind.slice(10));field.setAccessible(true);gen=field.get(decorator);}
       var random=makeRand(seed),ok=gen.b(world,random,bp(ox,oy,oz)),rngAfter=random.nextInt(),blocks=[];
       for(var y=55;y<(featureMode==="vines"?130:80);y++)for(var dz=-8;dz<=8;dz++)for(var dx=-8;dx<=8;dx++) {
-        var st=getEncoded(ox+dx,y,oz+dz),base=spec.wall&&dx===1&&y>=64&&y<128?16:y<63?(spec.deposit&&y>=60?48:16):y===63?(spec.patterned&&((ox+dx)&3)===0?144:spec.surface):0;
+        var isSpringStone=spec.kind==='spring'&&(((dx===0&&dz===0&&(y===oy-1||y===oy+1)))||(y===oy&&((dx===-1&&dz===0)||(dx===0&&dz===-1)||(spec.variant!==1&&dx===0&&dz===1)||(spec.variant===2&&dx===1&&dz===0)||(spec.variant===3&&dx===0&&dz===0))));
+        var st=getEncoded(ox+dx,y,oz+dz),base=isSpringStone?16:spec.wall&&dx===1&&y>=64&&y<128?16:y<63?(spec.deposit&&y>=60?48:16):y===63?(spec.patterned&&((ox+dx)&3)===0?144:spec.surface):0;
         if(st!==base)blocks.push([dx,y-oy,dz,st]);
       }
-      cases.push({kind:spec.kind,variant:spec.variant,patterned:!!spec.patterned,deposit:!!spec.deposit,wall:!!spec.wall,surface:spec.surface,seed:seed,ox:ox,oy:oy,oz:oz,ok:ok,rngAfter:rngAfter,blocks:blocks});
+      cases.push({kind:spec.kind,variant:spec.variant,patterned:!!spec.patterned,deposit:!!spec.deposit,wall:!!spec.wall,liquid:spec.liquid||null,surface:spec.surface,seed:seed,ox:ox,oy:oy,oz:oz,ok:ok,rngAfter:rngAfter,blocks:blocks});
     }
 
     var out = new java.util.zip.GZIPOutputStream(new java.io.FileOutputStream(fixtureOutput));

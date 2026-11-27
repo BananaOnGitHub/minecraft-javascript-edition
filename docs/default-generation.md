@@ -187,6 +187,7 @@ node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/plants.json.gz plants
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/vines.json.gz vines
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/mushrooms.json.gz mushrooms
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/springs.json.gz springs
 ```
 
 The fixtures record the server and probe SHA-256 hashes.
@@ -250,6 +251,15 @@ unsuccessful observations. The caller supplies the light/support predicate;
 the fixtures cover bright open-air conditions, not real dark-world lighting.
 Its scatter loop uses the previously verified flower routine; MIT Glowstone
 `MushroomDecorator.java` informed the light and substrate distinction.
+
+Spring source-placement constraints were investigated against MIT Glowstone
+`FlowingLiquidDecorator.java`. A 48-case native fixture covers both fluids,
+three seeds, two elevations and four neighboring-block configurations. The
+first unresolved discrepancy is immediate liquid propagation: at seed 1,
+Y=64, the successful water case changes 74 observed block states and the lava
+case changes 10. A generator that only writes the source would fail these
+fixtures. No spring implementation is claimed until a compatible fluid-update
+contract and the surrounding propagation are validated.
 
 Springs, flowers' biome selection, giant mushrooms, and biome-specific
 features remain unimplemented and unvalidated. The population planner's semantics
