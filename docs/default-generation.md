@@ -188,6 +188,7 @@ node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/vines.json.gz vines
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/mushrooms.json.gz mushrooms
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/springs.json.gz springs
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/fluid-updates.json.gz fluids
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/icepatch.json.gz icepatch
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/wells.json.gz wells
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/giant.json.gz giant
@@ -274,9 +275,22 @@ explicit constructor argument). `runImmediate` scopes recursive generation-time
 updates and restores the previous mode even on exceptions. Ordinary scheduling
 requests are retained in `scheduled` or delivered to a supplied `schedule`
 callback; they are never automatically advanced as runtime ticks. No gameplay
-or population integration is enabled. Broader flow/contact scenarios and world
-RNG observations are being validated separately; the existing fixtures assert
-only caller RNG and their captured volume, not an entire runtime engine.
+or population integration is enabled.
+
+An additional **180/180 native immediate-update cases** now match exact states
+(12,441 changed states), caller/world RNG call sequences and both final RNG
+values, plus all 198 material movement flags. Fifteen scenarios per fluid cover
+downward/horizontal flow, metadata, decay, source creation, obstacles, drainage,
+flowers/signs, and water/lava contacts at levels 0/4/5. Three seeds, two heights,
+negative coordinates and chunk boundaries are included. Original spring cases
+remain **48/48**, with 1,440 changes matched. These are exact captured-volume
+comparisons, not a claim of complete runtime simulation. Host callbacks are
+required for arbitrary water-displaced block drops and nonfluid neighbor
+physics; unsupported default displacement throws rather than approximates.
+See [fluid-updates.md](fluid-updates.md) for the boundary, interface, provenance,
+fixture limits, and actionable runtime backlog. Both regression commands pass:
+`npm run test:default-generation` **29/29** and `npm run test:local-worlds`
+**56/56**. Existing generator IDs and persisted worlds are unchanged.
 
 `generateIcePatch189` matches 12 packed-ice patch fixtures on snow and grass,
 at two elevations, three seeds and chunk boundaries, including post-call RNG.

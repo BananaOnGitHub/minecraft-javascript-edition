@@ -8,21 +8,31 @@ export const fluidKind189 = state => {
 };
 const flowingId = kind => kind==='water'?8:10;
 
-// The default recognizes natural terrain and common washable decorations.
-// A host containing other blocks must supply its version-specific material
-// predicate; collision boxes are not a substitute for material movement rules.
-const NON_BLOCKING = new Set([0,6,8,9,10,11,27,28,30,31,32,37,38,39,40,50,51,55,59,66,69,70,72,75,76,77,78,83,90,93,94,104,105,106,111,115,131,132,141,142,143,147,148,149,150,157,171,175]);
+// Material movement flags, observed from the native 1.8.9 numeric block palette.
+// Collision boxes are not a substitute for material movement rules.
+const NON_BLOCKING = new Set([0,6,8,9,10,11,27,28,30,31,32,37,38,39,40,50,51,55,59,65,66,69,75,76,77,78,83,90,93,94,104,105,106,111,115,119,127,131,132,140,141,142,143,144,149,150,157,171,175]);
 const BARRIERS = new Set([64,65,68,71,63,83,90,193,194,195,196,197]);
+export const blocksFluidMovement189 = state=>!NON_BLOCKING.has(state>>4);
 
 export class FluidUpdates189 {
-  constructor(world, random=world.random, {blocksMovement=state=>!NON_BLOCKING.has(state>>4),
+  constructor(world, random=world.random, {blocksMovement=blocksFluidMovement189,
     isBarrier=state=>BARRIERS.has(state>>4), isLoaded=()=>true,
-    schedule, vaporizesWater=false}={}) {
+    schedule, onMix=()=>{}, displace, neighborChanged=()=>{}, vaporizesWater=false}={}) {
     this.world=world; this.random=random;
     this.blocksMovement=blocksMovement; this.isBarrier=isBarrier;
     this.isLoaded=isLoaded; this.scheduled=[];
     this.schedule=schedule??(event=>this.scheduled.push(event));
     this.vaporizesWater=vaporizesWater; this.immediate=false;
+    this.onMix=onMix;
+    this.neighborChanged=neighborChanged;
+    this.displace=displace??((x,y,z,state,kind)=>{
+      if(kind==='lava')this.mixEffects(x,y,z);
+      else if([37,38,39,40].includes(state>>4)) {
+        // One-item plant drops: chance test followed by three spawn offsets.
+        // Entity creation belongs to the host, but its RNG consumption does not.
+        for(let i=0;i<4;i++)this.random.nextFloat();
+      } else throw new Error(`Fluid displacement of block ${state>>4} requires a host displace callback`);
+    });
   }
   get(x,y,z) {return y<0||y>=256?0:this.world.get(x,y,z);}
   level(x,y,z,kind) {const s=this.get(x,y,z);return fluidKind189(s)===kind?s&15:-1;}
@@ -40,8 +50,8 @@ export class FluidUpdates189 {
     if(before===state)return;
     this.world.set(x,y,z,state);
     const kind=fluidKind189(state);
-    if((before>>4)!==(state>>4)&&kind&&((state>>4)===flowingId(kind))) {
-      if(!this.mix(x,y,z))this.request(x,y,z,kind);
+    if((before>>4)!==(state>>4)&&kind) {
+      if(!this.mix(x,y,z)&&(state>>4)===flowingId(kind))this.request(x,y,z,kind);
     }
     if(notify)this.notify(x,y,z);
   }
@@ -51,14 +61,21 @@ export class FluidUpdates189 {
     for(const [dx,dy,dz] of NEIGHBORS) {
       if(dy===-1||fluidKind189(this.get(x+dx,y+dy,z+dz))!=='water')continue;
       const level=state&15;
-      if(level===0||level<=4) {this.set(x,y,z,(level===0?49:4)<<4);return true;}
+      if(level<=4) {this.set(x,y,z,(level===0?49:4)<<4);this.mixEffects(x,y,z);return true;}
     }
     return false;
+  }
+  mixEffects(x,y,z) {
+    // Mixing's sound pitch consumes world RNG even with no audio renderer.
+    const f=Math.fround;
+    const pitch=f(f(2.6)+f(f(this.random.nextFloat()-this.random.nextFloat())*f(0.8)));
+    this.onMix({x,y,z,pitch});
   }
   notify(x,y,z) {
     for(const [dx,dy,dz] of NEIGHBORS) {
       const bx=x+dx,by=y+dy,bz=z+dz,s=this.get(bx,by,bz),kind=fluidKind189(s);
-      if(!kind||this.mix(bx,by,bz))continue;
+      if(!kind) {this.neighborChanged(bx,by,bz,{x,y,z},this);continue;}
+      if(this.mix(bx,by,bz))continue;
       if(s>>4===flowingId(kind)+1) {
         this.set(bx,by,bz,(flowingId(kind)<<4)|(s&15),false);
         this.request(bx,by,bz,kind);
@@ -83,11 +100,18 @@ export class FluidUpdates189 {
       if(this.blocked(bx,y,bz)||(fluidKind189(s)===kind&&(s&15)===0))continue;
       const cost=this.blocked(bx,y-1,bz)?this.slope(bx,y,bz,kind,1,(i+2)%4):0;
       if(cost<best){best=cost;result=[];}
-      if(cost===best)result.push([dx,dz]);
+      if(cost===best)result.push(SIDES[i]);
     }
-    return result;
+    // The native selection is an EnumSet: application follows facing ordinal
+    // order (north, south, west, east), not the horizontal search iterator.
+    return result.sort((a,b)=>[0,3,1,2][SIDES.indexOf(a)]-[0,3,1,2][SIDES.indexOf(b)]);
   }
-  flow(x,y,z,kind,level) {if(this.canFlow(x,y,z,kind))this.set(x,y,z,(flowingId(kind)<<4)|level);}
+  flow(x,y,z,kind,level) {
+    if(!this.canFlow(x,y,z,kind))return;
+    const previous=this.get(x,y,z);
+    if(previous!==0)this.displace(x,y,z,previous,kind,this.random);
+    this.set(x,y,z,(flowingId(kind)<<4)|level);
+  }
   tick(x,y,z,random=this.random) {
     const state=this.get(x,y,z),kind=fluidKind189(state);
     if(!kind||state>>4!==flowingId(kind))return;
@@ -117,7 +141,7 @@ export class FluidUpdates189 {
       }
     } else this.set(x,y,z,((flowingId(kind)+1)<<4)|level,false);
     if(this.canFlow(x,y-1,z,kind)) {
-      if(kind==='lava'&&fluidKind189(this.get(x,y-1,z))==='water')this.set(x,y-1,z,16);
+      if(kind==='lava'&&fluidKind189(this.get(x,y-1,z))==='water') {this.set(x,y-1,z,16);this.mixEffects(x,y-1,z);}
       else this.flow(x,y-1,z,kind,level>=8?level:level+8);
     } else if(level>=0&&(level===0||this.blocked(x,y-1,z))) {
       const next=level>=8?1:level+step;
