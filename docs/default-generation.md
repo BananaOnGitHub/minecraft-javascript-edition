@@ -150,8 +150,38 @@ Negative division uses floor semantics. Mesa similarity remains asymmetric.
 
 ## Remaining dependency order
 
-1. Implement ore veins and distribution, then biome vegetation and decoration.
+1. Complete isolated biome vegetation and decoration features. Standard ore
+   generation and individual tree generators are implemented and tested.
 2. Implement structures and population with explicit legacy order semantics.
 3. Register the new generator only with an honest supported-stage contract,
    preserving old generator IDs and stored columns. Measure worker latency and
    memory once complete column generation is available.
+
+## Isolated decoration features
+
+`generateDoublePlant189(world, random, x, y, z, variant)` in `decoration.js`
+generates one double-plant patch using synchronous `world.get` / `world.set`
+with 1.8 block states. The caller supplies the plant variant (0–5) and RNG.
+All 54 isolated vanilla fixtures match block coordinates, metadata, return
+values and post-call RNG. They cover six variants, three seeds, two elevations,
+grass, dirt, farmland and stone, and positions straddling chunk boundaries.
+They do not yet cover obstructed upper blocks or broader biome placement
+rules. This is a biome decorator feature; choosing variants and ordering its
+calls are separate responsibilities. Lakes, dungeons and structures belong to
+separate population stages, not this feature.
+
+The double-plant loop was independently adapted from the MIT-licensed
+Glowstone `DoubleTallPlant.java` at commit
+`e9aeaa46330326f0d3917dce8f9bc4cdd1e434bd`, and corrected against the local
+unmodified 1.8.9 server. `third-party/glowstone/LICENSE` carries its notice.
+`tools/probe-decoration.js` captures numerical behavior without decompiling or
+modifying the server. Regenerate its fixture in a disposable world with:
+
+```sh
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/decoration.json.gz
+```
+
+The fixture records the server and probe SHA-256 hashes. Sand, gravel and clay
+deposits, aquatic features, other vegetation, giant mushrooms, and biome-specific
+features remain unimplemented and unvalidated. The population planner's semantics
+differ from legacy population; these independent features are not connected to it.
