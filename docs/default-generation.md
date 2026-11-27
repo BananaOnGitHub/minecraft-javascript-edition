@@ -7,6 +7,56 @@ and terrace worlds keep their original generators and saved columns.
 
 ## Verified stages
 
+### Isolated non-structure population features
+
+`generateLake189(world, random, x, y, z, kind, {canFreezeWater, topBlock})`
+implements the 1.8.9 lake cavity, preflight rejection, liquid filling, dirt
+restoration, lava boundary hardening and water freeze checks. `kind` is
+`water` or `lava`; callers supply the biome's top state and the world-specific
+freeze predicate. `canFreeze189` and `biomeBaseTemperature189` can provide
+the latter with a biome lookup. Calls use the mutable `GenerationWorld189`
+host and its existing fluid hooks; they do not advance scheduled fluid ticks.
+
+**48/48 controlled lake calls** match the unmodified local server: both fluids,
+three seeds, both signs and chunk crossings, low-elevation and wet-boundary
+rejections, ice formation, and grass/mycelium surface restoration. Comparisons
+cover return values, exact changed states and metadata, feature RNG methods,
+bounds and final value (8,473 changed states). **8/8 natural-terrain calls**
+also match, with 752 changed states across seed-7 plains, desert, taiga and
+swamp inputs. Captures cover a bounded volume; more obstruction, mixed-fluid,
+lighting, high/low terrain and world-RNG cases remain to be characterized.
+The fixtures compare the feature RNG, but do not capture the separate world RNG.
+The ellipsoid approach was independently adapted from Glowstone's MIT-licensed
+`Lake.java` at commit `e9aeaa46330326f0d3917dce8f9bc4cdd1e434bd`;
+`third-party/glowstone/LICENSE` retains its notice. Native observations, not
+Glowstone's behavior, determine the checked 1.8.9 details.
+
+`climate.js` supplies observed numeric base temperatures for the 61 registered
+1.8.9 biomes, elevation-adjusted temperature, precipitation height, water
+freezing and snow placement predicates. `freezeAndSnow189(world, chunkX,
+chunkZ, baseTemperatureAt)` runs the offset 16×16 final pass; the temperature
+callback supplies the base temperature of the biome at each position.
+The final pass is separate from surface generation and consumes no RNG.
+
+Climate comparisons cover 48 combinations of eight biomes, two coordinate
+signs and three elevations, 14 candidate block states per combination, 64
+support observations, and eight cases of enclosed water or block light.
+**12/12 isolated pass comparisons** match 1,032 changed states over warm/cold
+biomes and chunk boundaries. Those pass fixtures execute a separately authored
+sequence of native precipitation, freeze, snow and block-write services; they
+do not directly invoke the native provider's complete population routine.
+Further native population-stage comparisons, natural-terrain snow passes, more
+biome/height/obstruction combinations and cached-light timing are still needed
+before claiming complete population parity. Neither these features nor the
+decorator is connected to the incompatible immutable population planner.
+
+Feature implementation checkpoint: `a572762`. The lake and climate probes in `tools/probe-{lake,natural-lakes,freeze,
+freeze-pass,snow-support,climate-edges,biome-climate}.js` use the existing
+`capture-decoration-fixture.mjs` runner with their respective mode names.
+Fixtures contain numerical observations and source hashes, not game assets or
+source.
+
+
 `populationSeed189(worldSeed, chunkX, chunkZ)` computes the legacy population
 seed using exact signed-long arithmetic and Java Random; it does not schedule
 population. Five native provider calls with world seed 7 match the captured
@@ -32,7 +82,7 @@ no remaining first differences. See [generation-world.md](generation-world.md)
 for derivation, exact coverage and unverified cases. The host is not registered
 or connected to the order-independent population planner. Corrected lighting
 implementation: `c63ce74`. Current regressions:
-`test:default-generation` **35/35**, `test:local-worlds` **62/62**.
+`test:default-generation` **43/43**, `test:local-worlds` **70/70**.
 
 `Biomes189` implements the Default climate, biome, Hills, mutation, shore,
 river, smoothing, and legacy Voronoi layer graph. Scale 4 returns the biome

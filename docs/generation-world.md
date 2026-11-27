@@ -146,8 +146,9 @@ edges, extended
 plant/drop/vine behavior and pending sky-gap execution outside these generation
 sequences need further coverage. Logical allocation is initialized from the
 provided block column; importing arbitrary externally lit chunks may require
-preserving their actual section allocation and light state. No structure, lake,
-dungeon, playable registration or persistence/planner integration is included.
+preserving their actual section allocation and light state. The isolated lake and final freeze/snow features use this host; see
+[default-generation.md](default-generation.md). No structure, dungeon, playable
+registration or persistence/planner integration is included.
 
 ```sh
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/services.json.gz world-services
