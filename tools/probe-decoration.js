@@ -98,6 +98,7 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
     if(featureMode==="wells") specs=[{kind:'well',surface:192,variant:0},{kind:'well',surface:32,variant:0}];
     if(featureMode==="giant") {specs=[];for each(var mushroom in ['brown_mushroom_block','red_mushroom_block'])for each(var ground in [32,192])specs.push({kind:'giant',surface:ground,variant:0,liquid:mushroom});}
     if(featureMode==="spikes") specs=[{kind:'spike',surface:1280,variant:0},{kind:'spike',surface:32,variant:0}];
+    if(featureMode==="boulders") specs=[{kind:'boulder',surface:32,variant:0},{kind:'boulder',surface:192,variant:0}];
     var decorator=Java.type('ady')['e(int)'](1).as;
     for(var si=0;si<specs.length;si++) for(var ji=0;ji<3;ji++) for(var hi=0;hi<2;hi++) {
       var spec=specs[si],seed=(featureMode==="spikes"?[1,7,88]:[1,7,12345])[ji],cx=400+si*12+ji*3,cz=400+hi*4;
@@ -141,6 +142,7 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
       else if(spec.kind==='pumpkin')gen=new (Java.type('apl'))();
       else if(spec.kind==='melon')gen=new (Java.type('aph'))();
       else if(spec.kind==='giant')gen=new (Java.type('aoz'))(Java.type('afh').b(spec.liquid));
+      else if(spec.kind==='boulder')gen=new (Java.type('aok'))(Java.type('afh').b('mossy_cobblestone'),0);
       else if(spec.kind==='spike')gen=new (Java.type('apb'))();
       else if(spec.kind==='well')gen=new (Java.type('aor'))();
       else if(spec.kind==='icepatch')gen=new (Java.type('apa'))(4);

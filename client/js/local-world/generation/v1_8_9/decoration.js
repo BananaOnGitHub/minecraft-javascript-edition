@@ -264,3 +264,25 @@ export function generateIceSpike189(world,random,x,y,z) {
   }
   return true;
 }
+
+// Boulder geometry adapted from MIT Glowstone StoneBoulder.java.
+export function generateMossyBoulder189(world,random,x,y,z) {
+  while(y>3) {
+    const below=world.get(x,y-1,z)>>4;
+    if(below!==0&&[2,3,1].includes(below))break;
+    y--;
+  }
+  if(y<=3)return false;
+  const f=Math.fround;
+  for(let i=0;i<3;i++) {
+    const rx=random.nextInt(2),ry=random.nextInt(2),rz=random.nextInt(2);
+    const radius=f(f(f(rx+ry+rz)*f(.333))+f(.5)),r2=f(radius*radius);
+    for(let bx=x-rx;bx<=x+rx;bx++)for(let by=y-ry;by<=y+ry;by++)for(let bz=z-rz;bz<=z+rz;bz++) {
+      if((bx-x)**2+(by-y)**2+(bz-z)**2<=r2)world.set(bx,by,bz,48<<4);
+    }
+    x+=-1+random.nextInt(2);
+    y-=random.nextInt(2);
+    z+=-1+random.nextInt(2);
+  }
+  return true;
+}

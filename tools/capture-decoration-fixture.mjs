@@ -43,7 +43,7 @@ try {
   let bytes;
   try { bytes=await readFile(capture); } catch(error) { throw new Error("Reference capture missing: "+log.slice(-3500),{cause:error}); }
   const fixture=JSON.parse(gunzipSync(bytes));
-  if(fixture.cases?.length!==(mode==="patches"?48:mode==="aquatic"?24:mode==="reeds"?12:mode==="deposits"?18:mode==="grass"?18:mode==="plants"?36:mode==="vines"?12:mode==="mushrooms"?36:mode==="springs"?48:mode==="icepatch"?12:mode==="wells"?12:mode==="giant"?24:mode==="spikes"?12:54))throw new Error('Incomplete numerical capture: '+log.slice(-2500));
+  if(fixture.cases?.length!==(mode==="patches"?48:mode==="aquatic"?24:mode==="reeds"?12:mode==="deposits"?18:mode==="grass"?18:mode==="plants"?36:mode==="vines"?12:mode==="mushrooms"?36:mode==="springs"?48:mode==="icepatch"?12:mode==="wells"?12:mode==="giant"?24:mode==="spikes"?12:mode==="boulders"?12:54))throw new Error('Incomplete numerical capture: '+log.slice(-2500));
   const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
   fixture.reference='Local unmodified Minecraft Java 1.8.9, isolated double plant features';
   fixture.serverSha256=hash(await readFile(jar));

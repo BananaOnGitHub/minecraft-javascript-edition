@@ -192,6 +192,7 @@ node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/wells.json.gz wells
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/giant.json.gz giant
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/spikes.json.gz spikes
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/boulders.json.gz boulders
 ```
 
 The fixtures record the server and probe SHA-256 hashes.
@@ -288,6 +289,12 @@ three seeds, including seed 88's rare tall spike. Contour geometry was adapted
 from MIT Glowstone `IceSpike.java`, with RNG order, float behavior, and roots
 verified by black-box fixtures. Deeper replaceable soil, edges near the world
 height, and obstructions need additional reference coverage.
+
+`generateMossyBoulder189` matches 12 fixtures for grass and sand over stone,
+two heights, three seeds and chunk boundaries, including RNG state. Its three
+overlapping ellipsoids derive from MIT Glowstone `StoneBoulder.java`, with
+reference-corrected offsets. Mixed soils, non-solid obstructions, and replaceable
+plants need further coverage.
 
 Springs, flowers' biome selection, and other biome-specific
 features remain unimplemented and unvalidated. The population planner's semantics
