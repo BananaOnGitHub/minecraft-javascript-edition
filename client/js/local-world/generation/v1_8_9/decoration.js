@@ -30,6 +30,20 @@ export function generateFlowerPatch189(world, random, x, y, z, state, canPlace) 
   return true;
 }
 
+// Tall grass and ferns descend through air and leaves before scattering.
+export function generateTallGrassPatch189(world,random,x,y,z,variant) {
+  if(variant!==1&&variant!==2)throw new RangeError('Invalid tall grass variant');
+  while(y>0 && [0,18,161].includes(world.get(x,y,z)>>4))y--;
+  for(let i=0;i<128;i++) {
+    const bx=x+random.nextInt(8)-random.nextInt(8);
+    const by=y+random.nextInt(4)-random.nextInt(4);
+    const bz=z+random.nextInt(8)-random.nextInt(8);
+    if(by<0||by>=256||world.get(bx,by,bz)!==0)continue;
+    if([2,3,60].includes(world.get(bx,by-1,bz)>>4))world.set(bx,by,bz,(31<<4)|variant);
+  }
+  return true;
+}
+
 // Occupancy, support and four horizontal neighbors determine cactus survival.
 export function generateCactusPatch189(world,random,x,y,z,isSolid) {
   for(let i=0;i<10;i++) {

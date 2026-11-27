@@ -183,6 +183,7 @@ node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/aquatic.json.gz aquatic
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/reeds.json.gz reeds
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/deposits.json.gz deposits
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/grass.json.gz grass
 ```
 
 The fixtures record the server and probe SHA-256 hashes.
@@ -216,6 +217,14 @@ vertical depth, replaceable blocks, return value, and random consumption. All
 edges with a dirt substrate. Sand substrates, moving water, and mixed material
 layers still need reference coverage. Spring generators remain separate.
 
-Springs, other vegetation, giant mushrooms, and biome-specific
+`generateTallGrassPatch189` handles grass and ferns and matches 18 isolated
+native cases covering three seeds, two elevations, grass and sand substrates,
+and chunk boundaries. It descends through air or leaves before scattering;
+leaf-canopy and obstruction cases need further coverage. The algorithm was
+adapted from the MIT Glowstone `TallGrass.java` and corrected with reference
+fixtures for legacy placement order and RNG consumption.
+
+Springs, flowers' biome selection, dead bushes, vines, mushrooms, pumpkins,
+melons, giant mushrooms, and biome-specific
 features remain unimplemented and unvalidated. The population planner's semantics
 differ from legacy population; these independent features are not connected to it.
