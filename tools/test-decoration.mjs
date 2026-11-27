@@ -195,3 +195,51 @@ test('packed ice patches match native fixtures and RNG', async () => {
   }
   assert.equal(fixture.cases.length,12);
 });
+
+test('desert wells match native block states and RNG', async () => {
+  const {generateDesertWell189}=await import('../client/js/local-world/generation/v1_8_9/decoration.js');
+  const fixture=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-decoration-wells.json.gz',import.meta.url))));
+  for(const c of fixture.cases) {
+    const blocks=new Map(),key=(x,y,z)=>`${x},${y},${z}`,base=y=>y<63?16:y===63?c.surface:0;
+    const world={get:(x,y,z)=>blocks.get(key(x,y,z))??base(y),set:(x,y,z,s)=>blocks.set(key(x,y,z),s)};
+    const r=new JavaRandom(BigInt(c.seed));
+    assert.equal(generateDesertWell189(world,r,c.ox,c.oy,c.oz),c.ok);assert.equal(r.nextInt(),c.rngAfter);
+    const actual=[];for(let y=55;y<80;y++)for(let dz=-8;dz<=8;dz++)for(let dx=-8;dx<=8;dx++) {
+      const s=world.get(c.ox+dx,y,c.oz+dz);if(s!==base(y))actual.push([dx,y-c.oy,dz,s]);
+    }
+    assert.deepEqual(actual,c.blocks,`seed=${c.seed}, surface=${c.surface}, y=${c.oy}`);
+  }
+  assert.equal(fixture.cases.length,12);
+});
+
+test('giant mushroom geometry and RNG match native fixtures', async () => {
+  const {generateGiantMushroom189}=await import('../client/js/local-world/generation/v1_8_9/decoration.js');
+  const fixture=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-decoration-giant.json.gz',import.meta.url))));
+  for(const c of fixture.cases) {
+    const blocks=new Map(),key=(x,y,z)=>`${x},${y},${z}`,base=y=>y<63?16:y===63?c.surface:0;
+    const world={get:(x,y,z)=>blocks.get(key(x,y,z))??base(y),set:(x,y,z,s)=>blocks.set(key(x,y,z),s)};
+    const r=new JavaRandom(BigInt(c.seed)),kind=c.liquid.startsWith('brown')?'brown':'red';
+    assert.equal(generateGiantMushroom189(world,r,c.ox,c.oy,c.oz,kind),c.ok);assert.equal(r.nextInt(),c.rngAfter);
+    const actual=[];for(let y=55;y<80;y++)for(let dz=-8;dz<=8;dz++)for(let dx=-8;dx<=8;dx++) {
+      const s=world.get(c.ox+dx,y,c.oz+dz);if(s!==base(y))actual.push([dx,y-c.oy,dz,s]);
+    }
+    assert.deepEqual(actual,c.blocks,`${kind} seed=${c.seed}, surface=${c.surface}, y=${c.oy}`);
+  }
+  assert.equal(fixture.cases.length,24);
+});
+
+test('ice spikes match native fixtures and RNG', async () => {
+  const {generateIceSpike189}=await import('../client/js/local-world/generation/v1_8_9/decoration.js');
+  const fixture=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-decoration-spikes.json.gz',import.meta.url))));
+  for(const c of fixture.cases) {
+    const blocks=new Map(),key=(x,y,z)=>`${x},${y},${z}`,base=y=>y<63?16:y===63?c.surface:0;
+    const world={get:(x,y,z)=>blocks.get(key(x,y,z))??base(y),set:(x,y,z,s)=>blocks.set(key(x,y,z),s)};
+    const r=new JavaRandom(BigInt(c.seed));assert.equal(generateIceSpike189(world,r,c.ox,c.oy,c.oz),c.ok);
+    assert.equal(r.nextInt(),c.rngAfter,`RNG seed=${c.seed} surface=${c.surface}`);
+    const actual=[];for(let y=55;y<160;y++)for(let dz=-8;dz<=8;dz++)for(let dx=-8;dx<=8;dx++) {
+      const s=world.get(c.ox+dx,y,c.oz+dz);if(s!==base(y))actual.push([dx,y-c.oy,dz,s]);
+    }
+    assert.deepEqual(actual,c.blocks,`seed=${c.seed}, surface=${c.surface}, y=${c.oy}`);
+  }
+  assert.equal(fixture.cases.length,12);
+});

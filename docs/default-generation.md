@@ -189,6 +189,9 @@ node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/mushrooms.json.gz mushrooms
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/springs.json.gz springs
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/icepatch.json.gz icepatch
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/wells.json.gz wells
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/giant.json.gz giant
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/spikes.json.gz spikes
 ```
 
 The fixtures record the server and probe SHA-256 hashes.
@@ -268,6 +271,24 @@ Its cylinder geometry is adapted from MIT Glowstone `BlockPatch.java` and the
 native numerical reference. Mixed ice/dirt substrates and obstructions remain
 unverified.
 
-Springs, flowers' biome selection, giant mushrooms, ice spikes, wells, and other biome-specific
+`generateDesertWell189` matches 12 fixtures on sand and grass at two elevations,
+including negative attempts and caller RNG. Its layout derives from MIT Glowstone
+`GlowDesertWell.java`. Unsupported foundations and fluid interactions require
+additional testing.
+
+`generateGiantMushroom189` matches 24 isolated brown/red fixtures, including
+cap/stem metadata, caller RNG, successful and failed soils and elevations, and
+chunk boundaries. The caller supplies an opaque-block predicate when the world
+contains non-air transparent blocks. Open-air geometry was adapted from MIT
+Glowstone `BrownMushroomTree.java` and `RedMushroomTree.java`. Leaf canopies,
+blocked volumes, arbitrary opacity and additional heights remain unverified.
+
+`generateIceSpike189` matches 12 snow/grass fixtures at two elevations across
+three seeds, including seed 88's rare tall spike. Contour geometry was adapted
+from MIT Glowstone `IceSpike.java`, with RNG order, float behavior, and roots
+verified by black-box fixtures. Deeper replaceable soil, edges near the world
+height, and obstructions need additional reference coverage.
+
+Springs, flowers' biome selection, and other biome-specific
 features remain unimplemented and unvalidated. The population planner's semantics
 differ from legacy population; these independent features are not connected to it.

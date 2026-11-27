@@ -177,3 +177,90 @@ export function generateIcePatch189(world,random,x,y,z,maxRadius=4) {
   }
   return true;
 }
+
+// Geometry independently adapted from Glowstone's MIT GlowDesertWell.
+export function generateDesertWell189(world,random,x,y,z) {
+  while(y>2 && world.get(x,y,z)===0)y--;
+  if((world.get(x,y,z)>>4)!==12)return false;
+  for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++) {
+    if(world.get(x+dx,y-1,z+dz)===0&&world.get(x+dx,y-2,z+dz)===0)return false;
+  }
+  const set=(dx,dy,dz,state)=>world.set(x+dx,y+dy,z+dz,state);
+  for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)for(let dy=-1;dy<=0;dy++)set(dx,dy,dz,384);
+  for(const [dx,dz] of [[0,0],[-1,0],[1,0],[0,-1],[0,1]])set(dx,0,dz,128);
+  for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)if(Math.abs(dx)===2||Math.abs(dz)===2)set(dx,1,dz,384);
+  for(const [dx,dz] of [[-2,0],[2,0],[0,-2],[0,2]])set(dx,1,dz,705);
+  for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)set(dx,4,dz,dx===0&&dz===0?384:705);
+  for(const dx of [-1,1])for(const dz of [-1,1])for(let dy=1;dy<=3;dy++)set(dx,dy,dz,384);
+  return true;
+}
+
+// Cap geometry adapted from Glowstone's MIT BrownMushroomTree and
+// RedMushroomTree, with metadata and order checked against native fixtures.
+export function generateGiantMushroom189(world,random,x,y,z,kind,isOpaque=state=>state!==0) {
+  if(kind!=='brown'&&kind!=='red')throw new RangeError('Unknown giant mushroom');
+  const height=4+random.nextInt(3),id=kind==='brown'?99:100;
+  if(y<1||y+height+1>=256)return false;
+  for(let by=y;by<=y+height+1;by++) {
+    const radius=by<=y+3?0:3;
+    for(let bx=x-radius;bx<=x+radius;bx++)for(let bz=z-radius;bz<=z+radius;bz++) {
+      const state=world.get(bx,by,bz),block=state>>4;
+      if(state!==0&&block!==18&&block!==161)return false;
+    }
+  }
+  if(![2,3,110].includes(world.get(x,y-1,z)>>4))return false;
+  const capBottom=kind==='brown'?y+height:y+height-3;
+  for(let by=capBottom;by<=y+height;by++) {
+    const radius=kind==='brown'?3:by<y+height?2:1;
+    for(let dx=-radius;dx<=radius;dx++)for(let dz=-radius;dz<=radius;dz++) {
+      let meta=5;
+      if(dx===-radius)meta--;else if(dx===radius)meta++;
+      if(dz===-radius)meta-=3;else if(dz===radius)meta+=3;
+      if(kind==='brown'||by<y+height) {
+        if(Math.abs(dx)===radius&&Math.abs(dz)===radius)continue;
+        if(dx===-radius+1&&dz===-radius||dx===-radius&&dz===-radius+1)meta=1;
+        else if(dx===radius-1&&dz===-radius||dx===radius&&dz===-radius+1)meta=3;
+        else if(dx===-radius+1&&dz===radius||dx===-radius&&dz===radius-1)meta=7;
+        else if(dx===radius-1&&dz===radius||dx===radius&&dz===radius-1)meta=9;
+      }
+      if(meta===5&&by<y+height)continue;
+      if(!isOpaque(world.get(x+dx,by,z+dz)))world.set(x+dx,by,z+dz,(id<<4)|meta);
+    }
+  }
+  for(let dy=0;dy<height;dy++)if(!isOpaque(world.get(x,y+dy,z)))world.set(x,y+dy,z,(id<<4)|10);
+  return true;
+}
+
+// Ice-spike contours informed by MIT Glowstone IceSpike.java, with float
+// arithmetic and random consumption independently checked by native probes.
+export function generateIceSpike189(world,random,x,y,z) {
+  while(y>2&&world.get(x,y,z)===0)y--;
+  if((world.get(x,y,z)>>4)!==80)return false;
+  y+=random.nextInt(4);
+  const height=random.nextInt(4)+7;
+  const width=Math.trunc(height/4)+random.nextInt(2);
+  if(width>1&&random.nextInt(60)===0)y+=10+random.nextInt(30);
+  const f=Math.fround,replaceable=s=>[0,3,78,80,79].includes(s>>4);
+  for(let dy=0;dy<height;dy++) {
+    const radius=f(f(1-f(dy/height))*width),bound=Math.ceil(radius);
+    for(let dx=-bound;dx<=bound;dx++)for(let dz=-bound;dz<=bound;dz++) {
+      const fx=f(Math.abs(dx)-.25),fz=f(Math.abs(dz)-.25);
+      if((dx!==0||dz!==0)&&f(f(fx*fx)+f(fz*fz))>f(radius*radius))continue;
+      if((dx===-bound||dx===bound||dz===-bound||dz===bound)&&random.nextFloat()>.75)continue;
+      if(y+dy<256&&replaceable(world.get(x+dx,y+dy,z+dz)))world.set(x+dx,y+dy,z+dz,174<<4);
+      if(dy!==0&&bound>1&&y-dy>=0&&replaceable(world.get(x+dx,y-dy,z+dz)))world.set(x+dx,y-dy,z+dz,174<<4);
+    }
+  }
+  const stem=Math.min(1,width-1);
+  for(let dx=-stem;dx<=stem;dx++)for(let dz=-stem;dz<=stem;dz++) {
+    let by=y-1,remaining=50;
+    if(Math.abs(dx)===1&&Math.abs(dz)===1)remaining=random.nextInt(5);
+    while(by>50) {
+      const state=world.get(x+dx,by,z+dz);
+      if(!replaceable(state)&&(state>>4)!==174)break;
+      world.set(x+dx,by,z+dz,174<<4);by--;
+      if(--remaining<=0) {by-=random.nextInt(5)+1;remaining=random.nextInt(5);}
+    }
+  }
+  return true;
+}

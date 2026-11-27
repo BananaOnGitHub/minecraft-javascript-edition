@@ -95,9 +95,12 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
     if(featureMode==="mushrooms") {specs=[];for each(var name in ['t','u'])for each(var ground in [1760,50,32])specs.push({kind:'decorator-'+name,surface:ground,variant:0});}
     if(featureMode==="springs") {specs=[];for each(var liquid in ['flowing_water','flowing_lava'])for(var shape=0;shape<4;shape++)specs.push({kind:'spring',surface:32,variant:shape,liquid:liquid});}
     if(featureMode==="icepatch") specs=[{kind:'icepatch',surface:1280,variant:4},{kind:'icepatch',surface:32,variant:4}];
+    if(featureMode==="wells") specs=[{kind:'well',surface:192,variant:0},{kind:'well',surface:32,variant:0}];
+    if(featureMode==="giant") {specs=[];for each(var mushroom in ['brown_mushroom_block','red_mushroom_block'])for each(var ground in [32,192])specs.push({kind:'giant',surface:ground,variant:0,liquid:mushroom});}
+    if(featureMode==="spikes") specs=[{kind:'spike',surface:1280,variant:0},{kind:'spike',surface:32,variant:0}];
     var decorator=Java.type('ady')['e(int)'](1).as;
     for(var si=0;si<specs.length;si++) for(var ji=0;ji<3;ji++) for(var hi=0;hi<2;hi++) {
-      var spec=specs[si],seed=[1,7,12345][ji],cx=400+si*12+ji*3,cz=400+hi*4;
+      var spec=specs[si],seed=(featureMode==="spikes"?[1,7,88]:[1,7,12345])[ji],cx=400+si*12+ji*3,cz=400+hi*4;
       setupGrass(cx,cz,63,spec.surface);
       if(spec.deposit) for(var ax=-1;ax<=1;ax++)for(var az=-1;az<=1;az++) {
         var ch=world["a(int,int)"](cx+ax,cz+az),section=ch.h()[3];
@@ -137,13 +140,16 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
       else if(spec.kind==='bush')gen=new (Java.type('aoq'))();
       else if(spec.kind==='pumpkin')gen=new (Java.type('apl'))();
       else if(spec.kind==='melon')gen=new (Java.type('aph'))();
+      else if(spec.kind==='giant')gen=new (Java.type('aoz'))(Java.type('afh').b(spec.liquid));
+      else if(spec.kind==='spike')gen=new (Java.type('apb'))();
+      else if(spec.kind==='well')gen=new (Java.type('aor'))();
       else if(spec.kind==='icepatch')gen=new (Java.type('apa'))(4);
       else if(spec.kind==='spring')gen=new (Java.type('apr'))(Java.type('afh').b(spec.liquid));
       else if(spec.kind==='vines')gen=new (Java.type('apw'))();
       else if(spec.kind==='grass')gen=new (Java.type('apu'))(Java.type('akc$a').values()[spec.variant]);
       else {var field=decorator.getClass().getDeclaredField(spec.kind.slice(10));field.setAccessible(true);gen=field.get(decorator);}
       var random=makeRand(seed),ok=gen.b(world,random,bp(ox,oy,oz)),rngAfter=random.nextInt(),blocks=[];
-      for(var y=55;y<(featureMode==="vines"?130:80);y++)for(var dz=-8;dz<=8;dz++)for(var dx=-8;dx<=8;dx++) {
+      for(var y=55;y<((featureMode==="vines"||featureMode==="spikes")?160:80);y++)for(var dz=-8;dz<=8;dz++)for(var dx=-8;dx<=8;dx++) {
         var isSpringStone=spec.kind==='spring'&&(((dx===0&&dz===0&&(y===oy-1||y===oy+1)))||(y===oy&&((dx===-1&&dz===0)||(dx===0&&dz===-1)||(spec.variant!==1&&dx===0&&dz===1)||(spec.variant===2&&dx===1&&dz===0)||(spec.variant===3&&dx===0&&dz===0))));
         var st=getEncoded(ox+dx,y,oz+dz),base=isSpringStone?16:spec.wall&&dx===1&&y>=64&&y<128?16:y<63?(spec.deposit&&y>=60?48:16):y===63?(spec.patterned&&((ox+dx)&3)===0?144:spec.surface):0;
         if(st!==base)blocks.push([dx,y-oy,dz,st]);
