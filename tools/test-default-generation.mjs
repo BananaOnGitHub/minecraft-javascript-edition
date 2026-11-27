@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { Biomes189, GENERATOR_ID } from '../client/js/local-world/generation/v1_8_9/biomes.js';
+import { JavaRandom } from '../client/js/local-world/java-random.js';
+import { ImprovedNoise189, SimplexNoise189, PerlinOctaves189, SimplexOctaves189 } from '../client/js/local-world/generation/v1_8_9/noise.js';
 
 const fixture = JSON.parse(await readFile(new URL('./fixtures/vanilla-189-biomes.json', import.meta.url)));
 const expand = rle => Uint8Array.from(rle.flatMap((v,i) => i%2 === 0 ? Array(rle[i+1]).fill(v) : []));
@@ -39,4 +41,23 @@ test('biome stage rejects lossy seed input and invalid query dimensions', () => 
   assert.throws(() => g.sample(0.5,0,16,16), /Integer/);
   assert.throws(() => g.sample(0,0,0,16), /size/);
   assert.throws(() => g.sample(0,0,16,16,{scale:2}), /scale/);
+});
+
+test('legacy 2D/3D noise and octaves match native double outputs exactly', async () => {
+  const fixture = JSON.parse(await readFile(new URL('./fixtures/vanilla-189-noise.json', import.meta.url)));
+  let count=0;
+  for (const f of fixture.cases) {
+    const random = new JavaRandom(BigInt(f.seed));
+    let actual = new Float64Array(f.values.length);
+    switch(f.kind) {
+      case 'perlin': new ImprovedNoise189(random).add(actual,f.x,f.y,f.z,f.nx,f.ny,f.nz,f.sx,f.sy,f.sz,f.amplitude); break;
+      case 'simplex': new SimplexNoise189(random).add(actual,f.x,f.z,f.nx,f.nz,f.sx,f.sz,f.amplitude); break;
+      case 'perlin-octaves': actual=new PerlinOctaves189(random,4).sample(f.x,f.y,f.z,f.nx,f.ny,f.nz,f.sx,f.sy,f.sz); break;
+      case 'simplex-octaves': actual=new SimplexOctaves189(random,4).sample(f.x,f.z,f.nx,f.nz,f.sx,f.sz,0.5,0.5); break;
+      default: assert.fail('Unknown native noise fixture kind');
+    }
+    assert.deepEqual(actual, Float64Array.from(f.values), `${f.kind}, seed=${f.seed}`);
+    count += actual.length;
+  }
+  assert.equal(count,5880);
 });

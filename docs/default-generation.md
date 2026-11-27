@@ -26,6 +26,12 @@ These results establish biome-stage agreement only. Heightmaps, density,
 surface blocks, caves, ores, decoration, and structures are separate stages.
 Whole-column agreement including shared air is not evidence of terrain parity.
 
+Improved Perlin (2D and 3D bulk paths), simplex, and both octave samplers match
+5,880 / 5,880 native double values exactly across the same eight seeds. Octave
+fixtures include coordinates beyond the 2^24 wrapping period. The legacy bulk
+sampler caches Y gradients within a lattice cell; independent point sampling
+would change these results.
+
 ## Reference reproduction
 
 Run `npm run test:default-generation` for checked-in numerical fixtures.
@@ -39,6 +45,7 @@ With a Java 8 compatible compiler and runtime:
 ```sh
 javac -d /tmp/vanilla-fixtures tools/VanillaGenerationFixture.java
 java -cp /tmp/vanilla-fixtures:/path/to/1.8.9/server.jar VanillaGenerationFixture biomes > /tmp/biomes.json
+java -cp /tmp/vanilla-fixtures:/path/to/1.8.9/server.jar VanillaGenerationFixture noise > /tmp/noise.json
 ```
 
 Only the first `width * height` values returned by vanilla are valid. Its
@@ -63,6 +70,12 @@ Biome algorithms are adapted from the independent MIT-licensed
 `generator.c`, `layers.c`, `rng.h`, and `biomes.c`. The notice is preserved in
 `third-party/cubiomes/LICENSE`. Later-version branches were excluded.
 
+Noise sampling loops are adapted from the independent MIT-licensed
+[Glowstone](https://github.com/GlowstoneMC/Glowstone), commit
+`e9aeaa46330326f0d3917dce8f9bc4cdd1e434bd`, with native fixtures determining
+1.8.9 random consumption, divisor semantics, wrapping, and accumulation order.
+Its notice is preserved in `third-party/glowstone/LICENSE`.
+
 The layer PRNG is distinct from `java.util.Random`. It uses signed 64-bit
 wrapping polynomial steps, arithmetic shifts, and corrected signed remainder.
 The pre-1.13 Hills zoom branch deliberately retains its uninitialized seed.
@@ -70,12 +83,10 @@ Negative division uses floor semantics. Mesa similarity remains asymmetric.
 
 ## Remaining dependency order
 
-1. Validate bulk improved Perlin, simplex, and octave sampling against native
-   numerical outputs, including the legacy cached Y gradients and 2D path.
-2. Implement and validate density, biome elevation blending, and interpolation.
-3. Implement and validate surfaces, oceans, sea level, and bedrock.
-4. Implement caves and ravines, then ores, then biome vegetation and decoration.
-5. Implement structures and population with explicit legacy order semantics.
-6. Register the new generator only with an honest supported-stage contract,
+1. Implement and validate density, biome elevation blending, and interpolation.
+2. Implement and validate surfaces, oceans, sea level, and bedrock.
+3. Implement caves and ravines, then ores, then biome vegetation and decoration.
+4. Implement structures and population with explicit legacy order semantics.
+5. Register the new generator only with an honest supported-stage contract,
    preserving old generator IDs and stored columns. Measure worker latency and
    memory once complete column generation is available.
