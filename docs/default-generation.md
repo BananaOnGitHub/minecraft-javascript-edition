@@ -42,6 +42,21 @@ equal and 2,097,152 / 2,097,152 raw block states exactly equal. Raw heightmaps
 therefore match at all 8,192 tested X/Z positions. These fixtures capture each
 stage directly, before surface replacement and before population.
 
+`surfaceColumn(cx, cz)` adds biome-specific ground, sand/sandstone, snow and
+ice surfaces, swamp water/lilies, Mesa bands/pillars, and bedrock. All 86 natural
+reference columns match density and surface states exactly (70,950 density
+doubles, 5,636,096 block states, 22,016 height samples, and 110,080 bottom-five
+bedrock-mask positions). A separate synthetic fixture exercises all 59
+Overworld biomes over varying heights, water, and overhangs at three coordinates:
+177 / 177 cases and 11,599,872 / 11,599,872 states match exactly.
+
+Special cases include the 1.8 sandstone transition for depth-one sand, local
+coordinate transposition in surface callbacks, snow blocks on ice spikes,
+and Mesa's X/X band-offset sampling. Mesa pillar noise is initialized from zero
+on a fresh native biome singleton, before the cached world seed is updated.
+This implementation reproduces a fresh-process world independently of other
+worlds visited in the same browser, without process-history dependence.
+
 ## Reference reproduction
 
 Run `npm run test:default-generation` for checked-in numerical fixtures.
@@ -66,6 +81,7 @@ For saved reference worlds:
 
 ```sh
 node tools/compare-default-biomes.mjs /path/to/world -7 /tmp/biome-report.json
+node tools/compare-default-generation.mjs tools/fixtures/vanilla-189-diverse-terrain.json.gz /tmp/terrain-report.json
 ```
 
 This reads every saved Anvil column without changing the world, counts
@@ -89,6 +105,13 @@ the supplied server and existing worlds. Gzipped JSON fixtures contain numerical
 behavioral outputs only, with row-major Y/Z/X block-state runs and X/Z/Y density
 arrays. No game assets or implementation code are included.
 
+`--coordinates CSV_FILE` selects additional chunk coordinates for the reference
+runner. Each line begins `chunkX,chunkZ`. Captures also produce a diagnostic
+`.surfaces.gz` sibling containing all registered Overworld surface callbacks on
+the same synthetic input. The comparison command reports density, heightmaps,
+biomes, full states, non-air states, and bedrock separately. Carved unpopulated
+and populated parity remain unavailable until those implementations exist.
+
 ## Derivation and licensing
 
 Biome algorithms are adapted from the independent MIT-licensed
@@ -110,9 +133,8 @@ Negative division uses floor semantics. Mesa similarity remains asymmetric.
 
 ## Remaining dependency order
 
-1. Implement and validate surfaces, biome-specific surface changes, and bedrock.
-2. Implement caves and ravines, then ores, then biome vegetation and decoration.
-3. Implement structures and population with explicit legacy order semantics.
-4. Register the new generator only with an honest supported-stage contract,
+1. Implement caves and ravines, then ores, then biome vegetation and decoration.
+2. Implement structures and population with explicit legacy order semantics.
+3. Register the new generator only with an honest supported-stage contract,
    preserving old generator IDs and stored columns. Measure worker latency and
    memory once complete column generation is available.

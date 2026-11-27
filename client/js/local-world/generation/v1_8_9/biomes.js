@@ -192,7 +192,9 @@ function voronoi(l,x,z) {
 export class Biomes189 {
   constructor(seed) {
     if (typeof seed !== 'bigint' && typeof seed !== 'string') throw new TypeError('Use an exact BigInt or decimal seed');
-    this.seed = BigInt.asIntN(64, BigInt(seed));
+    if(typeof seed==='string' && !/^[+-]?\d+$/.test(seed)) throw new RangeError('Resolved decimal seed required');
+    this.seed = BigInt(seed);
+    if(BigInt.asIntN(64,this.seed)!==this.seed) throw new RangeError('Seed must be a signed 64-bit integer');
     this.layers = [];
     const add = (salt,fn,p,p2) => { const l = new Layer(this.seed,salt,fn,p,p2); this.layers.push(l); return l; };
     let p = add(1,continent);

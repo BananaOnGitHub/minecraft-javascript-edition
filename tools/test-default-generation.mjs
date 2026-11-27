@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { gunzipSync } from 'node:zlib';
 import { DefaultTerrain189, BIOME_HEIGHTS } from '../client/js/local-world/generation/v1_8_9/default.js';
+import { replaceSurfaces189 } from '../client/js/local-world/generation/v1_8_9/surface.js';
 import { Biomes189, GENERATOR_ID } from '../client/js/local-world/generation/v1_8_9/biomes.js';
 import { JavaRandom } from '../client/js/local-world/java-random.js';
 import { ImprovedNoise189, SimplexNoise189, PerlinOctaves189, SimplexOctaves189 } from '../client/js/local-world/generation/v1_8_9/noise.js';
@@ -39,6 +40,8 @@ test('biome queries are independent of request order and rectangle boundaries', 
 
 test('biome stage rejects lossy seed input and invalid query dimensions', () => {
   assert.throws(() => new Biomes189(7), /exact/);
+  assert.throws(() => new Biomes189(9223372036854775808n), /signed 64/);
+  assert.throws(() => new Biomes189('0x10'), /decimal/);
   const g = new Biomes189(7n);
   assert.throws(() => g.sample(0.5,0,16,16), /Integer/);
   assert.throws(() => g.sample(0,0,0,16), /size/);
@@ -66,6 +69,7 @@ test('legacy 2D/3D noise and octaves match native double outputs exactly', async
 
 const terrainFixtures = await Promise.all(['7','-7','9223372036854775807','-9223372036854775808'].map(async seed =>
   JSON.parse(gunzipSync(await readFile(new URL(`./fixtures/vanilla-189-terrain-${seed}.json.gz`,import.meta.url))))));
+const diverseTerrain = JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-diverse-terrain.json.gz',import.meta.url))));
 const statesFromRuns = runs => Uint16Array.from(runs.flatMap((v,i) => i%2===0 ? Array(runs[i+1]).fill(v) : []));
 
 test('Default density and interpolated stone/water/air match native stages exactly', () => {
@@ -83,4 +87,33 @@ test('Default density and interpolated stone/water/air match native stages exact
     }
   }
   assert.equal(samples,26400);assert.equal(states,2097152);
+});
+
+test('diverse biome density, raw blocks, surface states, heights and bedrock match native', () => {
+  for(const fixture of [...terrainFixtures,diverseTerrain]) {
+    const generator=new DefaultTerrain189(fixture.seed);
+    for(const c of fixture.columns) {
+      const a=generator.surfaceColumn(c.x,c.z),expected=statesFromRuns(c.surface);
+      const label=`seed=${fixture.seed}, chunk=${c.x},${c.z}`;
+      assert.deepEqual(a.density,Float64Array.from(c.density),label+' density');
+      assert.deepEqual(a.states,expected,label+' surface');
+      for(let i=0;i<256;i++) {
+        let top=255;while(top>=0&&a.states[top*256+i]===0)top--;
+        let expectedTop=255;while(expectedTop>=0&&expected[expectedTop*256+i]===0)expectedTop--;
+        assert.equal(top,expectedTop,label+' height');
+        for(let y=0;y<5;y++)assert.equal(a.states[y*256+i]===112,expected[y*256+i]===112,label+' bedrock');
+      }
+    }
+  }
+});
+
+test('all 59 Overworld biome surfaces match native diagnostic terrain, including overhangs', async () => {
+  const fixture=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-biome-surfaces.json.gz',import.meta.url))));
+  const generator=new DefaultTerrain189(fixture.seed),raw=statesFromRuns(fixture.raw),ids=new Set();
+  for(const c of fixture.cases) {
+    const a=replaceSurfaces189(generator,c.x,c.z,{states:raw.slice(),biomes:new Uint8Array(256).fill(c.biome)});
+    assert.deepEqual(a.states,statesFromRuns(c.states),`biome=${c.biome}, chunk=${c.x},${c.z}`);
+    ids.add(c.biome);
+  }
+  assert.equal(ids.size,59);assert.equal(fixture.cases.length,177);
 });

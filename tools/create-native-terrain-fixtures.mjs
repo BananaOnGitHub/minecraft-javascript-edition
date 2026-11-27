@@ -6,6 +6,12 @@ import { createHash } from 'node:crypto';
 import { gzipSync, gunzipSync } from 'node:zlib';
 
 const [jarArg, javaArg, classesArg, eulaArg, outputArg, ...seeds] = process.argv.slice(2);
+let coordinates;
+const coordinateOption=seeds.indexOf('--coordinates');
+if(coordinateOption>=0) {
+  if(!seeds[coordinateOption+1])throw new Error('--coordinates requires a CSV path');
+  coordinates=resolve(seeds[coordinateOption+1]);seeds.splice(coordinateOption,2);
+}
 if (!outputArg || !seeds.length) throw new Error('Usage: node tools/create-native-terrain-fixtures.mjs SERVER_JAR JAVA_EXECUTABLE COMPILED_FIXTURE_CLASSES ACCEPTED_EULA_FILE NEW_OUTPUT_DIRECTORY SEEDS...');
 const jar=resolve(jarArg), java=resolve(javaArg), classes=resolve(classesArg), output=resolve(outputArg);
 const eula=await readFile(resolve(eulaArg),'utf8');
@@ -25,7 +31,7 @@ for (const seed of seeds) {
   const child=spawn(java,['-Xms256M','-Xmx768M',
     '-Dlog4j.configurationFile='+join(dirname(jar),'log4j2_17-111.xml'),
     '-Dlog4j2.formatMsgNoLookups=true','-cp',classes+':'+jar,
-    'VanillaTerrainFixture',file,seed],{cwd:directory,stdio:['pipe','pipe','pipe']});
+    'VanillaTerrainFixture',file,seed,...(coordinates?[coordinates]:[])],{cwd:directory,stdio:['pipe','pipe','pipe']});
   let log='';const exit=once(child,'exit');
   try {
     await new Promise((resolve,reject) => {
@@ -39,10 +45,14 @@ for (const seed of seeds) {
     const [code]=await exit;
     if(code!==0) throw new Error('Server exit '+code);
     const fixture=JSON.parse(gunzipSync(await readFile(file)));
-    if(fixture.seed!==seed || fixture.columns.length!==8) throw new Error('Incomplete native fixture');
+    if(fixture.seed!==seed || !fixture.columns.length) throw new Error('Incomplete native fixture');
     fixture.serverSha256=serverSha256;
     fixture.reference='Local unmodified Minecraft Java 1.8.9 Default provider, before population';
     await writeFile(file,gzipSync(JSON.stringify(fixture)+'\n'));
+    const synthetic=JSON.parse(gunzipSync(await readFile(file+'.surfaces.gz')));
+    synthetic.serverSha256=serverSha256;
+    synthetic.reference='Local 1.8.9 biome surface callbacks on synthetic diagnostic terrain';
+    await writeFile(file+'.surfaces.gz',gzipSync(JSON.stringify(synthetic)+'\n'));
     console.log('Captured native seed',seed,'columns',fixture.columns.length);
   } finally {
     if(child.exitCode===null) {child.kill('SIGTERM');await exit;}

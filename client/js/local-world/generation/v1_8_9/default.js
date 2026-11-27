@@ -4,6 +4,7 @@
 import { JavaRandom } from '../../java-random.js';
 import { Biomes189, GENERATOR_ID } from './biomes.js';
 import { PerlinOctaves189, SimplexOctaves189 } from './noise.js';
+import { replaceSurfaces189 } from './surface.js';
 
 const f = Math.fround;
 // Legacy biome root height and variation, verified against runtime registry
@@ -42,6 +43,7 @@ export class DefaultTerrain189 {
     this.forest=new PerlinOctaves189(random,8);
   }
   density(cx,cz) {
+    if(!Number.isInteger(cx)||!Number.isInteger(cz)||cx < -1875000||cx >= 1875000||cz < -1875000||cz >= 1875000) throw new RangeError('Chunk coordinates outside supported world bounds');
     const x=cx*4,z=cz*4;
     const biomes=this.biomes.sample(x-2,z-2,10,10,{scale:4});
     const height=this.depth.sample(x,0,z,5,1,5,200,1,200);
@@ -102,4 +104,5 @@ export class DefaultTerrain189 {
     }
     return {states,biomes:this.biomes.sample(cx*16,cz*16,16,16),density};
   }
+  surfaceColumn(cx,cz) { return replaceSurfaces189(this,cx,cz,this.rawColumn(cx,cz)); }
 }
