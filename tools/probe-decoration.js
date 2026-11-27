@@ -90,7 +90,7 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
       }
     }
 
-    if(featureMode.indexOf('biomes')===0||featureMode==='world-services'||featureMode==='lighting-timing') {
+    if(featureMode.indexOf('biomes')===0||featureMode==='world-services'||featureMode==='lighting-timing'||featureMode==='population-seed') {
       load(auxiliaryProbe);
       var result=captureBiomeDecoration(world,setupGrass,getEncoded,rawSet,makeRand);
       var stream=new java.util.zip.GZIPOutputStream(new java.io.FileOutputStream(fixtureOutput));

@@ -23,6 +23,7 @@ import {
 } from '../client/js/local-world/generation/v1_8_9/trees.js';
 import { Biomes189, GENERATOR_ID } from '../client/js/local-world/generation/v1_8_9/biomes.js';
 import { JavaRandom } from '../client/js/local-world/java-random.js';
+import { populationSeed189 } from '../client/js/local-world/generation/v1_8_9/population-seed.js';
 import { ImprovedNoise189, SimplexNoise189, PerlinOctaves189, SimplexOctaves189 } from '../client/js/local-world/generation/v1_8_9/noise.js';
 
 const fixture = JSON.parse(await readFile(new URL('./fixtures/vanilla-189-biomes.json', import.meta.url)));
@@ -293,4 +294,22 @@ test('large oak retains instance height and RNG lifecycle while fresh calls rema
   assert.equal(cases,6);
   assert.equal(fixture.cases.find(c=>c.lifecycle==='fresh'&&c.seed===7).heightLimit,13);
   assert.equal(fixture.cases.find(c=>c.lifecycle==='shared'&&c.seed===7).heightLimit,14);
+});
+
+
+test('population seed uses signed long arithmetic and Java RNG', async () => {
+  const f=JSON.parse(await readFile(new URL('./fixtures/population-seed-189.json',import.meta.url)));
+  assert.equal(f.cases.length,56);
+  const native=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-population-seed.json.gz',import.meta.url))));
+  assert.equal(native.cases.length,5);
+  for(const c of native.cases){assert.equal(c.seed0,'7');assert.equal(populationSeed189(7n,c.x,c.z).toString(),c.seed1);}
+  for(const c of f.cases) {
+    const seed=populationSeed189(BigInt(c.worldSeed),c.chunkX,c.chunkZ);
+    assert.equal(seed.toString(),c.populationSeed,JSON.stringify(c));
+    const random=new JavaRandom(seed);
+    assert.equal(random.nextInt(),c.nextInt);
+    assert.equal(random.nextLong().toString(),c.nextLong);
+  }
+  assert.throws(()=>populationSeed189(1,0,0),/BigInt/);
+  assert.throws(()=>populationSeed189(1n,2147483648,0),/32-bit/);
 });

@@ -7,6 +7,15 @@ and terrace worlds keep their original generators and saved columns.
 
 ## Verified stages
 
+`populationSeed189(worldSeed, chunkX, chunkZ)` computes the legacy population
+seed using exact signed-long arithmetic and Java Random; it does not schedule
+population. Five native provider calls with world seed 7 match the captured
+initial and population seed values at positive and negative chunk coordinates.
+An independent Java arithmetic fixture adds 56 cases spanning signed-long and
+signed-int boundaries, with post-seed `nextInt` and `nextLong` outputs. Other
+world seeds have not yet been captured from the native provider.
+
+
 Mutable-world services in `generation-world.js` now match all **20/20 expanded
 service sequences**, the original **12/12**, and eight additional per-write timing
 traces (1,928 checkpoints, 400,636 light values). Logical section allocation, multi-column height
