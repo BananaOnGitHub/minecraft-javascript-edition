@@ -7,26 +7,23 @@ and terrace worlds keep their original generators and saved columns.
 
 ## Verified stages
 
-Mutable-world services are being validated independently in `generation-world.js`.
-The first 12 native service sequences match synchronous cross-chunk writes,
-height/top queries, skylight, block light and neighbor-light queries after stone,
-glass, leaves, water, torch and glowstone placement/removal at positive and
-negative chunk edges. Native leaf placement leaves a vertically attenuated
-column until a subsequent light check; eagerly settling all lighting changes
-would erase this observed generation-time state. Complete independent-host
-biome comparisons remain incomplete; the controlled-host regressions are
-preserved. The expanded service capture currently matches **16/20** sequences;
-multi-leaf canopy and cave timing still fail. Independent decorator comparisons
-match the first **10 invocations of each dataset** before stopping on lighting
-differences (taiga 14 versus native 13; swamp 13 versus native 10). No native
-lighting observations are injected into that implementation. The shared mutable
-host/fluid interface additionally passes all **180 immediate-fluid fixtures**.
-See [generation-world.md](generation-world.md) for the interface, exact evidence,
-reproduction commands, numeric discrepancy reports, and remaining work. This
-host is not registered or connected to the order-independent population planner.
-Current service checkpoint regressions: `test:default-generation` **33/33**,
-`test:local-worlds` **60/60**. Expanded-service/independent-host diagnostics still
-return nonzero; their failures are preserved separately rather than accepted.
+Mutable-world services in `generation-world.js` now match all **20/20 expanded
+service sequences**, the original **12/12**, and eight additional per-write timing
+traces (1,928 checkpoints, 400,636 light values). Logical section allocation, multi-column height
+relighting order, the distance-17 light frontier, opacity/emission triggers,
+initial-emitter cache state and direct versus neighbor-brightness
+queries preserve the observed generation-time cached-light order.
+
+All **140/140** existing complete biome-decoration invocations now match with
+independently computed world services: **502,327 changed states**, **1,526,416
+feature RNG calls**, both RNG streams' traces/final observations, and **11,008
+candidate lighting values**. The original controlled-host comparisons remain intact.
+The mutable-host fluid integration remains **180/180**. Diagnostic reports have
+no remaining first differences. See [generation-world.md](generation-world.md)
+for derivation, exact coverage and unverified cases. The host is not registered
+or connected to the order-independent population planner. Corrected lighting
+implementation: `c63ce74`. Current regressions:
+`test:default-generation` **35/35**, `test:local-worlds` **62/62**.
 
 `Biomes189` implements the Default climate, biome, Hills, mutation, shore,
 river, smoothing, and legacy Voronoi layer graph. Scale 4 returns the biome

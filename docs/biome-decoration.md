@@ -64,9 +64,9 @@ pure functions of their arguments. The material movement palette used by
 cactus/fluid placement remains separate from opacity/full-block predicates.
 The host must provide version-correct lighting and block physics. A constant
 "bright" predicate is insufficient under canopies and inside caves.
-The independent host now exists, but its larger-canopy lighting is not yet
-compatible; see [generation-world.md](generation-world.md). The 140-case results
-below remain controlled-host orchestrator results.
+The independent host now reproduces all 140 invocations and captured lighting
+queries as well; see [generation-world.md](generation-world.md). The controlled
+host results below remain separate orchestrator regressions.
 
 Reuse one `FluidUpdates189` for the call/context, with its host callbacks for
 displacement and nonfluid neighbor physics. World writes must not independently

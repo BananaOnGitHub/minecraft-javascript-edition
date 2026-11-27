@@ -1,10 +1,12 @@
-# Mutable generation world: implementation and open timing discrepancy
+# Mutable generation world, Java 1.8.9
 
 `GenerationWorld189` supplies independent synchronous block storage, mutable
 heightmaps, native height/top-solid queries, light arrays and bounded light
 updates, material predicates, plant support checks and a shared fluid updater.
-It is **not ready to replace the controlled decorator host for every biome**.
-Multi-block canopy/cave lighting still disagrees with the numerical reference.
+The independent host now matches **all 20 expanded service cases** and **all
+140 existing complete biome-decoration invocations**, including all captured raw
+and neighbor-light observations. The controlled reference-lighting host remains
+as a separate orchestrator regression; it is not used by the independent host.
 
 ## Interface
 
@@ -28,8 +30,8 @@ including opacity, emission and neighbor-brightness flags. Metadata-dependent
 placement behavior is handled by the host predicates, not collision boxes.
 
 `canPlace` implements the observed soil rules for flowers, grass/ferns, bushes,
-mushrooms, reeds, lilies and cactus. Mushroom light queries use computed light,
-never captured values. Basic vine attachment uses full-cube plus material
+mushrooms, reeds, lilies and cactus. Mushroom light queries use independently
+maintained cached light, never captured values. Basic vine attachment uses full-cube plus material
 movement; neighbor handling retains supported face bits and above-vine support.
 Fluid-driven plant support updates are separate from ordinary flag-2 writes.
 
@@ -56,50 +58,109 @@ it does not supply a verified 1.8.9 generation-timing solution.
 Native probes observe public services and numeric properties only. They do not
 copy or decompile game source. Existing source licenses remain unchanged.
 
-## Results and exact limits
+## Corrected timing and behavioral derivation
 
-* The original **12/12 service sequences** pass: open terrain, glass, leaves,
-  water, torch and glowstone placement/removal at both positive and negative
-  chunk boundaries. This compares 8,000 light triples and 2,000 height/top values.
-* A preserved **20-case expanded capture** adds multi-leaf canopies, caves,
-  mushroom writes, plant-support changes and water/lava mixing. Full comparison
-  currently passes **16/20**; both canopy and both cave cases fail. They are
-  diagnostic failures, not suppressed/marked-passing regressions.
-* The shared fluid updater, host displacement and no-duplicate-hook contract
-  pass all **180 existing immediate-fluid fixtures**, including final feature
-  and world RNG values and exact changed states. The original 48 spring and
-  other generation/decorator fixtures remain unchanged.
-* Independent-host decorator comparison stops on the first divergence, after
-  **10 exact leading invocations in each dataset**. This is not a 140-case match
-  rate; later invocations are not evaluated after that first failure.
+The first divergence occurred during roof construction, before the previous
+step-zero snapshot. Per-write numerical probes distinguish these paths:
 
-The first controlled-host difference is taiga biome 5, feature seed 1, RNG call
-7299, position `(6412,69,6415)`: computed light **14**, native **13**. That call
-still matches final blocks and RNG. The additional dataset first fails swamp
-biome 6, seed 3, call 8497, `(6422,65,6406)`: computed **13**, native **10**;
-the mismatch also prevents a reference mushroom placement. Reports are stored
-in `tools/fixtures/generation-world-{service,decoration}-report.json`.
+* Logical section allocation is tracked separately from the reused physical
+  TypedArrays. The first block in a new native section constructs the skylight
+  map. Later writes in that section update the changed column and check its
+  horizontal neighbors over the old/new height interval. Checks complete the
+  west, east, north and south columns before the changed column; interleaving
+  those columns by Y or checking the changed column first changes cached light.
+* Skylight-map construction stores positive vertically attenuated values and
+  retains cached values below its attenuation frontier. It is not a globally
+  settled light solve. Light writes that allocate a section take the same map
+  construction path. Explicit map construction/check calls are tested too.
+* Local light checks run when opacity or emission changes. Metadata-only leaf
+  writes and nonemitting plant writes do not unconditionally relight. Brown
+  mushrooms emit level 1; red mushrooms do not. This explains why queries can
+  see cached-light changes within one mushroom invocation.
+* Light queues include Manhattan distance 17: an entry below distance 17 can
+  enqueue a neighbor at distance 17. Applying the strict bound to the neighbor
+  instead truncates observed canopy updates.
+* Provider-created raw emitters start with zero cached block light; a later
+  explicit light check seeds their emission. Initializing input lava to emission
+  15 incorrectly brightens the natural swamp fixture before an update.
+* Mushroom support checks read direct combined light, distinct from the public
+  neighbor-brightness query. Both query forms are compared independently.
+* Leaf-break metadata updates occur after storage replacement and before the
+  outer height/light update. Existing feature helpers see already-marked leaves
+  and do not repeat those writes.
 
-The immediate next task is matching multi-column relighting/section-allocation
-and pending sky-gap timing. A globally settled flood fill is insufficient:
-native cached light changes within a mushroom invocation. No fixture-specific
-lighting exceptions or injection are used in the independent comparisons.
-Initialization around natural emitters, arbitrary transparent states, full
-plant/support predicates, fluid destruction/drop types, vine updates and loaded
-boundary cases need broader reference coverage. Do not register this host as a
-playable generator or connect it to immutable isolated population batches.
+These rules were independently derived and corrected using the local unmodified
+server's numerical behavior. `probe-lighting-timing.js` extends the established
+capture runner. It observes both coordinate signs after each roof block, plant
+write, metadata write, explicit light check and skylight-map construction, and
+records section presence. Two raw-lava sequences separate initial cached block
+light from checked emission. Two sparse-canopy replays use numerical write input
+authored by the existing independent JavaScript tree generator, sampling 79
+positions after every write. The fixture records the input and probe hashes.
+The replay exposed the column-check ordering and distance-bound discrepancies.
+No source is copied/decompiled, no expected light is injected into the host, and no coordinate/biome/fixture-specific branches exist
+in the implementation. Pending sky-gap work is not automatically drained as
+runtime ticks; no full population scheduler has been added.
+
+## Verified results and remaining limits
+
+* Original service fixture: **12/12**, unchanged (8,000 light triples and 2,000
+  height/top values).
+* Expanded service fixture: **20/20**, unchanged, including the previously
+  failing canopy/cave cases, transparent/opaque changes, support predicates and
+  fluid interactions. No comparison criteria or snapshots were removed.
+* New timing fixture: **8/8 traces**, **1,928 checkpoints**, **200,264 sampled
+  positions / 400,636 light values**, plus **896 section-allocation observations**.
+  Four roof/plant/metadata traces have 224 checkpoints; two initial-emitter traces
+  have four; two 849-write canopy replays have 1,700. These include both coordinate
+  signs and cross-chunk/section boundaries.
+* Independent decorator: **118/118 + 22/22 evaluated and matched**. This covers
+  all 59 Overworld biomes, 502,327 exact changed states and 1,526,416 generation
+  feature-RNG calls. Both RNG call sequences and both final RNG observations
+  match for every invocation. The biome fixtures consume zero world-stream calls
+  during decoration; nonzero world-stream consumption is covered by the fluid
+  integration cases. The additional observation draw per stream/case
+  is excluded from generation-call counts.
+* **5,504 captured mushroom candidate points** match both raw combined light
+  and neighbor brightness: **11,008 light values**, with coordinates and exact
+  post-draw boundaries checked. This includes occupied/invalid candidates whose
+  predicates the generator short-circuits. The original taiga and swamp failures
+  are resolved, including swamp placement; the additional Mega Taiga/Hills
+  occupied-leaf observations also match.
+* Shared fluid integration remains **180/180**. The original 48 spring cases,
+  isolated generators and controlled-host 140-case decorator tests remain active.
+
+Reports in `tools/fixtures/generation-world-{service,decoration}-report.json`
+record evaluated counts, matched states/RNG calls/light queries and no remaining
+first differences. The independent comparator evaluates every invocation,
+records all failing invocations plus the first difference, and returns nonzero
+on any mismatch.
+Block-state, RNG and light agreement are reported separately; unchanged terrain
+does not inflate the changed-state count.
+
+There are no known discrepancies in these captured cases. This does not prove
+universal runtime lighting or complete population parity. Broader terrain seeds,
+other initial-emitter configurations, arbitrary metadata/transparent materials,
+missing or unready neighbor chunks, weather/daylight subtraction, world-height
+edges, extended
+plant/drop/vine behavior and pending sky-gap execution outside these generation
+sequences need further coverage. Logical allocation is initialized from the
+provided block column; importing arbitrary externally lit chunks may require
+preserving their actual section allocation and light state. No structure, lake,
+dungeon, playable registration or persistence/planner integration is included.
 
 ```sh
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/services.json.gz world-services
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/timing.json.gz lighting-timing
 node tools/compare-world-services.mjs /tmp/service-report.json
 node tools/compare-generation-world.mjs /tmp/decoration-report.json
 npm run test:default-generation
 npm run test:local-worlds
 ```
 
-Both comparison commands intentionally return nonzero while discrepancies
-remain. Original controlled-host biome tests remain isolated and unchanged in
-purpose; new passing tests cover the verified service sequences and fluid reuse.
-Final regression checkpoint: `test:default-generation` **33/33** and
-`test:local-worlds` **60/60**. These passing suites do not imply that the separate
-expanded-service and independent-decoration diagnostic comparisons pass.
+Both comparison commands now succeed without injected lighting. Their failures
+remain errors. The passing service, timing and complete independent-host
+comparisons are permanent tests in `tools/test-generation-world.mjs`.
+Implementation checkpoint: `c63ce74` (cached-light timing and reference coverage).
+Final regression checkpoint: `test:default-generation` **35/35** and
+`test:local-worlds` **62/62**.

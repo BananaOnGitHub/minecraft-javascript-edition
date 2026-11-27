@@ -111,7 +111,8 @@ fixtures remain future work. No complete biome decorator or population
 persistence changes are included.
 
 Current regression commands, including biome orchestration:
-`npm run test:default-generation` (33 tests) and `npm run test:local-worlds`
-(60 tests), all passing. Mutable-host integration additionally replays the 180
-fluid cases; broader host-lighting discrepancies are tracked in
+`npm run test:default-generation` (35 tests) and `npm run test:local-worlds`
+(62 tests), all passing. Mutable-host integration additionally replays the 180
+fluid cases; independent-host generation-lighting results and remaining limits
+are tracked in
 [generation-world.md](generation-world.md).
