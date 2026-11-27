@@ -7,6 +7,16 @@ and terrace worlds keep their original generators and saved columns.
 
 ## Verified stages
 
+Mutable-world services are being validated independently in `generation-world.js`.
+The first 12 native service sequences match synchronous cross-chunk writes,
+height/top queries, skylight, block light and neighbor-light queries after stone,
+glass, leaves, water, torch and glowstone placement/removal at positive and
+negative chunk edges. Native leaf placement leaves a vertically attenuated
+column until a subsequent light check; eagerly settling all lighting changes
+would erase this observed generation-time state. Complete independent-host
+biome comparisons remain a separate checkpoint; the controlled-host regressions
+are preserved.
+
 `Biomes189` implements the Default climate, biome, Hills, mutation, shore,
 river, smoothing, and legacy Voronoi layer graph. Scale 4 returns the biome
 grid used by terrain density sampling. Scale 1 returns saved block biomes.
