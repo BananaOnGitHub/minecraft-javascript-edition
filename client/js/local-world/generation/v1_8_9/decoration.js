@@ -78,3 +78,21 @@ export function generateSugarCanePatch189(world,random,x,y,z) {
   }
   return true;
 }
+
+// Underwater circular replacement deposits. Radius and target material are
+// explicit so the caller can select clay, sand, or gravel features.
+export function generateSedimentDeposit189(world,random,x,y,z,kind) {
+  const config={clay:{radius:4,state:82<<4,halfHeight:1,replace:[3,12]},
+    sand:{radius:7,state:12<<4,halfHeight:2,replace:[2,3]},
+    gravel:{radius:6,state:13<<4,halfHeight:2,replace:[2,3]}}[kind];
+  if(!config)throw new RangeError('Unknown sediment deposit');
+  if(![8,9].includes(world.get(x,y,z)>>4))return false;
+  const radius=random.nextInt(config.radius-2)+2;
+  for(let bx=x-radius;bx<=x+radius;bx++)for(let bz=z-radius;bz<=z+radius;bz++) {
+    if((bx-x)**2+(bz-z)**2>radius*radius)continue;
+    for(let by=y-config.halfHeight;by<=y+config.halfHeight;by++) {
+      if(by>=0&&by<256&&config.replace.includes(world.get(bx,by,bz)>>4))world.set(bx,by,bz,config.state);
+    }
+  }
+  return true;
+}

@@ -82,3 +82,21 @@ test('sugar cane matches native growth and RNG beside water', async () => {
   }
   assert.equal(fixture.cases.length,12);
 });
+
+test('underwater deposits match native placement and RNG', async () => {
+  const {generateSedimentDeposit189}=await import('../client/js/local-world/generation/v1_8_9/decoration.js');
+  const fixture=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-decoration-deposits.json.gz',import.meta.url))));
+  for(const c of fixture.cases) {
+    const blocks=new Map(),key=(x,y,z)=>`${x},${y},${z}`;
+    const base=y=>y<63?(y>=60?48:16):y===63?144:0;
+    const world={get:(x,y,z)=>blocks.get(key(x,y,z))??base(y),set:(x,y,z,s)=>blocks.set(key(x,y,z),s)};
+    const r=new JavaRandom(BigInt(c.seed)),kind={'decorator-e':'clay','decorator-f':'sand','decorator-g':'gravel'}[c.kind];
+    assert.equal(generateSedimentDeposit189(world,r,c.ox,c.oy,c.oz,kind),c.ok);
+    assert.equal(r.nextInt(),c.rngAfter,`${kind} seed=${c.seed}`);
+    const actual=[];for(let y=55;y<80;y++)for(let dz=-8;dz<=8;dz++)for(let dx=-8;dx<=8;dx++) {
+      const s=world.get(c.ox+dx,y,c.oz+dz);if(s!==base(y))actual.push([dx,y-c.oy,dz,s]);
+    }
+    assert.deepEqual(actual,c.blocks,`${kind} seed=${c.seed}, y=${c.oy}`);
+  }
+  assert.equal(fixture.cases.length,18);
+});

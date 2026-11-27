@@ -182,6 +182,7 @@ node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/patches.json.gz patches
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/aquatic.json.gz aquatic
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/reeds.json.gz reeds
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/deposits.json.gz deposits
 ```
 
 The fixtures record the server and probe SHA-256 hashes.
@@ -207,6 +208,14 @@ Sugar cane was adapted from MIT-licensed Glowstone `SugarCane.java`, with patch
 sampling and random consumption verified against the native probe. Lilies were
 independently implemented against the numerical observations.
 
-Sand, gravel and clay deposits, springs, other vegetation, giant mushrooms, and biome-specific
+`generateSedimentDeposit189(world, random, x, y, z, kind)` supports `clay`,
+`sand`, and `gravel` patches. Its cylindrical geometry draws on Glowstone's
+MIT `BlockPatch.java`; native observations determine water gating, radius,
+vertical depth, replaceable blocks, return value, and random consumption. All
+18 fixture cases match, covering three seeds, wet and dry origins, and chunk
+edges with a dirt substrate. Sand substrates, moving water, and mixed material
+layers still need reference coverage. Spring generators remain separate.
+
+Springs, other vegetation, giant mushrooms, and biome-specific
 features remain unimplemented and unvalidated. The population planner's semantics
 differ from legacy population; these independent features are not connected to it.
