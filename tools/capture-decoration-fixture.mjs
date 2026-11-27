@@ -16,7 +16,7 @@ const biomeCapture=mode.startsWith('biomes');
 const eula=await readFile(resolve(eulaArg),'utf8');
 if(!/^eula=true\s*$/m.test(eula))throw new Error('Supply an already accepted EULA.');
 const probe=fileURLToPath(new URL('./probe-decoration.js',import.meta.url));
-const auxiliaryProbe=fileURLToPath(new URL(mode==='population-seed'?'./probe-population-seed.js':mode==='lighting-timing'?'./probe-lighting-timing.js':mode==='world-services'?'./probe-world-services.js':'./probe-biome-decoration.js',import.meta.url));
+const auxiliaryProbe=fileURLToPath(new URL(mode==='natural-lakes'?'./probe-natural-lakes.js':mode==='biome-climate'?'./probe-biome-climate.js':mode==='climate-edges'?'./probe-climate-edges.js':mode==='snow-support'?'./probe-snow-support.js':mode==='freeze-pass'?'./probe-freeze-pass.js':mode==='freeze-services'?'./probe-freeze.js':mode==='lakes'?'./probe-lake.js':mode==='population-seed'?'./probe-population-seed.js':mode==='lighting-timing'?'./probe-lighting-timing.js':mode==='world-services'?'./probe-world-services.js':'./probe-biome-decoration.js',import.meta.url));
 const work=await mkdtemp(join(tmpdir(),'bigoak-reference-'));
 let log='',child;
 try {
@@ -39,19 +39,19 @@ try {
     if(!stopping&&log.includes('Done (')) {stopping=true;child.stdin.write('stop\n');}
   };
   child.stdout.on('data',collect);child.stderr.on('data',collect);
-  const timer=setTimeout(()=>child.kill('SIGKILL'),biomeCapture?600000:mode==='fluids'?180000:60000);
+  const timer=setTimeout(()=>child.kill('SIGKILL'),biomeCapture?600000:mode==='fluids'||mode==='lakes'||mode==='natural-lakes'?300000:60000);
   let code;
   try { [code]=await exited; } finally { clearTimeout(timer); }
   if(code!==0)throw new Error('Reference server failed: '+log.slice(-2500));
   let bytes;
   try { bytes=await readFile(capture); } catch(error) { throw new Error("Reference capture missing: "+log.slice(-3500),{cause:error}); }
   const fixture=JSON.parse(gunzipSync(bytes));
-  if(fixture.cases?.length!==(mode==='population-seed'?5:mode==='lighting-timing'?8:mode==='world-services'?20:mode==='biomes-extra'?22:mode==='biomes'?118:mode==='fluids'?180:mode==="patches"?48:mode==="aquatic"?24:mode==="reeds"?12:mode==="deposits"?18:mode==="grass"?18:mode==="plants"?36:mode==="vines"?12:mode==="mushrooms"?36:mode==="springs"?48:mode==="icepatch"?12:mode==="wells"?12:mode==="giant"?24:mode==="spikes"?12:mode==="boulders"?12:54))throw new Error('Incomplete numerical capture: '+log.slice(-2500));
+  if(fixture.cases?.length!==(mode==='natural-lakes'?8:mode==='biome-climate'?1:mode==='climate-edges'?8:mode==='snow-support'?4:mode==='freeze-pass'?12:mode==='freeze-services'?48:mode==='lakes'?48:mode==='population-seed'?5:mode==='lighting-timing'?8:mode==='world-services'?20:mode==='biomes-extra'?22:mode==='biomes'?118:mode==='fluids'?180:mode==="patches"?48:mode==="aquatic"?24:mode==="reeds"?12:mode==="deposits"?18:mode==="grass"?18:mode==="plants"?36:mode==="vines"?12:mode==="mushrooms"?36:mode==="springs"?48:mode==="icepatch"?12:mode==="wells"?12:mode==="giant"?24:mode==="spikes"?12:mode==="boulders"?12:54))throw new Error('Incomplete numerical capture: '+log.slice(-2500));
   const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
   fixture.reference='Local unmodified Minecraft Java 1.8.9, isolated '+mode+' behavioral observations';
   fixture.serverSha256=hash(await readFile(jar));
   fixture.probeSha256=hash(await readFile(probe));
-  if(biomeCapture||mode==='world-services'||mode==='lighting-timing'||mode==='population-seed')fixture.auxiliaryProbeSha256=hash(await readFile(auxiliaryProbe));
+  if(biomeCapture||mode==='world-services'||mode==='lighting-timing'||mode==='population-seed'||mode==='lakes'||mode==='freeze-services'||mode==='freeze-pass'||mode==='snow-support'||mode==='climate-edges'||mode==='biome-climate'||mode==='natural-lakes')fixture.auxiliaryProbeSha256=hash(await readFile(auxiliaryProbe));
   if(mode==='lighting-timing')fixture.inputSha256=hash(await readFile(new URL('./fixtures/lighting-canopy-input.json',import.meta.url)));
   await writeFile(output,gzipSync(JSON.stringify(fixture)+'\n'),{flag:'wx'});
   console.log('Captured',fixture.cases.length,'decoration cases to',output);
