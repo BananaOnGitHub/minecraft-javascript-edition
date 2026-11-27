@@ -170,6 +170,22 @@ function checkpointStore(database) {
         }
       }, POPULATION)
     },
+    commitStatefulPopulation(record, expectedRevision) {
+      // The journal includes generation writes, lights, RNG/instance state and
+      // source completion. Publish all of it in one compare-and-swap transaction.
+      return transact('readwrite', (store, complete, abort) => {
+        const read = store.get([record.worldId, record.generatorId, record.stageId, 0, 0])
+        read.onsuccess = () => {
+          if ((read.result?.revision ?? 0) !== expectedRevision) {
+            abort(new Error('Stateful population revision conflict'))
+            return
+          }
+          const next = { ...record, x: 0, z: 0, revision: expectedRevision + 1 }
+          store.put(next)
+          complete(next)
+        }
+      }, POPULATION)
+    },
     save,
     close() {
       database.close()
