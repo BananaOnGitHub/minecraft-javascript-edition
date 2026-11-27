@@ -25,10 +25,10 @@ export class ImprovedNoise189 extends Permutation {
     const p=this.p, amplitude=1/divisor;
     let index=0,previousY=-1,a=0,b=0,c=0,d=0;
     for(let i=0;i<nx;i++) {
-      let dx=x+this.x+i*sx;
+      let dx=x+i*sx+this.x;
       const fx0=Math.floor(dx), ix=fx0&255;dx-=fx0;const fx=fade(dx);
       for(let j=0;j<nz;j++) {
-        let dz=z+this.z+j*sz;
+        let dz=z+j*sz+this.z;
         const fz0=Math.floor(dz), iz=fz0&255;dz-=fz0;const fz=fade(dz);
         if(ny===1) {
           const aa=p[p[ix]]+iz,ba=p[p[ix+1]]+iz;
@@ -38,7 +38,7 @@ export class ImprovedNoise189 extends Permutation {
           continue;
         }
         for(let k=0;k<ny;k++) {
-          let dy=y+this.y+k*sy;
+          let dy=y+k*sy+this.y;
           const fy0=Math.floor(dy),iy=fy0&255;dy-=fy0;const fy=fade(dy);
           if(k===0||iy!==previousY) {
             previousY=iy;

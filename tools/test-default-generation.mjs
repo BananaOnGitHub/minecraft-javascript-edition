@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { gunzipSync } from 'node:zlib';
+import { DefaultTerrain189, BIOME_HEIGHTS } from '../client/js/local-world/generation/v1_8_9/default.js';
 import { Biomes189, GENERATOR_ID } from '../client/js/local-world/generation/v1_8_9/biomes.js';
 import { JavaRandom } from '../client/js/local-world/java-random.js';
 import { ImprovedNoise189, SimplexNoise189, PerlinOctaves189, SimplexOctaves189 } from '../client/js/local-world/generation/v1_8_9/noise.js';
@@ -60,4 +62,25 @@ test('legacy 2D/3D noise and octaves match native double outputs exactly', async
     count += actual.length;
   }
   assert.equal(count,5880);
+});
+
+const terrainFixtures = await Promise.all(['7','-7','9223372036854775807','-9223372036854775808'].map(async seed =>
+  JSON.parse(gunzipSync(await readFile(new URL(`./fixtures/vanilla-189-terrain-${seed}.json.gz`,import.meta.url))))));
+const statesFromRuns = runs => Uint16Array.from(runs.flatMap((v,i) => i%2===0 ? Array(runs[i+1]).fill(v) : []));
+
+test('Default density and interpolated stone/water/air match native stages exactly', () => {
+  let samples=0,states=0;
+  for(const fixture of terrainFixtures) {
+    for(const [id,h,v] of fixture.biomeParameters) assert.deepEqual(BIOME_HEIGHTS.get(id),[Math.fround(h),Math.fround(v)]);
+    const generator = new DefaultTerrain189(fixture.seed);
+    for(const column of fixture.columns) {
+      const actual=generator.rawColumn(column.x,column.z);
+      const label=`seed=${fixture.seed}, chunk=${column.x},${column.z}`;
+      assert.deepEqual(actual.density,Float64Array.from(column.density),label+' density');
+      assert.deepEqual(actual.biomes,expand(column.biomes),label+' biomes');
+      assert.deepEqual(actual.states,statesFromRuns(column.raw),label+' raw states');
+      samples+=actual.density.length;states+=actual.states.length;
+    }
+  }
+  assert.equal(samples,26400);assert.equal(states,2097152);
 });

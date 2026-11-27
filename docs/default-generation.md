@@ -32,6 +32,16 @@ fixtures include coordinates beyond the 2^24 wrapping period. The legacy bulk
 sampler caches Y gradients within a lattice cell; independent point sampling
 would change these results.
 
+`DefaultTerrain189.density(cx, cz)` and `rawColumn(cx, cz)` now implement the
+Default density lattice, float-precision biome height blending, depth noise,
+and repeated-addition interpolation into stone, water, and air. The checked-in
+native terrain fixtures contain 32 columns from four seeds (7, -7, signed long
+maximum and minimum), including adjacent chunks, both sides of region borders,
+and a distant coordinate. Results are 26,400 / 26,400 density doubles exactly
+equal and 2,097,152 / 2,097,152 raw block states exactly equal. Raw heightmaps
+therefore match at all 8,192 tested X/Z positions. These fixtures capture each
+stage directly, before surface replacement and before population.
+
 ## Reference reproduction
 
 Run `npm run test:default-generation` for checked-in numerical fixtures.
@@ -62,6 +72,23 @@ This reads every saved Anvil column without changing the world, counts
 unpopulated columns separately, and reports unavailable downstream metrics as
 null. It exits unsuccessfully on a mismatch or an empty reference world.
 
+`VanillaTerrainFixture.java` wraps the local server entry point and invokes its
+actual Default provider in a shutdown hook after server ticks have stopped.
+It captures density, raw terrain, surface replacement, and unpopulated provider
+chunks separately. It does not synthesize the native density inputs. The full
+server constructor supplies its real noise objects, settings, and biome weights.
+To regenerate, compile both Java fixture classes and run:
+
+```sh
+node tools/create-native-terrain-fixtures.mjs /path/to/server.jar /path/to/java /tmp/vanilla-fixtures /path/to/accepted/eula.txt /tmp/new-reference-directory 7 -7 9223372036854775807 -9223372036854775808
+```
+
+The runner refuses an existing output directory and copies an already accepted
+local EULA. It uses disposable worlds, an ephemeral loopback port, and preserves
+the supplied server and existing worlds. Gzipped JSON fixtures contain numerical
+behavioral outputs only, with row-major Y/Z/X block-state runs and X/Z/Y density
+arrays. No game assets or implementation code are included.
+
 ## Derivation and licensing
 
 Biome algorithms are adapted from the independent MIT-licensed
@@ -83,10 +110,9 @@ Negative division uses floor semantics. Mesa similarity remains asymmetric.
 
 ## Remaining dependency order
 
-1. Implement and validate density, biome elevation blending, and interpolation.
-2. Implement and validate surfaces, oceans, sea level, and bedrock.
-3. Implement caves and ravines, then ores, then biome vegetation and decoration.
-4. Implement structures and population with explicit legacy order semantics.
-5. Register the new generator only with an honest supported-stage contract,
+1. Implement and validate surfaces, biome-specific surface changes, and bedrock.
+2. Implement caves and ravines, then ores, then biome vegetation and decoration.
+3. Implement structures and population with explicit legacy order semantics.
+4. Register the new generator only with an honest supported-stage contract,
    preserving old generator IDs and stored columns. Measure worker latency and
    memory once complete column generation is available.
