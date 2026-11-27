@@ -1,6 +1,24 @@
 // Independently adapted from Glowstone's MIT DoubleTallPlant implementation;
 // legacy offsets, block states and RNG consumption verified against native probes.
 // world must supply synchronous get(x,y,z) and set(x,y,z,state).
+import {FluidUpdates189} from './fluids.js';
+
+export function generateSpring189(world,random,x,y,z,kind,updates=new FluidUpdates189(world)) {
+  if(kind!=='water'&&kind!=='lava')throw new RangeError('Unknown spring fluid');
+  if((world.get(x,y+1,z)>>4)!==1||(world.get(x,y-1,z)>>4)!==1)return false;
+  if(![0,1].includes(world.get(x,y,z)>>4))return false;
+  let stone=0,air=0;
+  for(const [dx,dz] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+    const id=world.get(x+dx,y,z+dz)>>4;
+    if(id===1)stone++;if(id===0)air++;
+  }
+  if(stone===3&&air===1) {
+    updates.set(x,y,z,(kind==='water'?8:10)<<4,false);
+    updates.runImmediate(()=>updates.tick(x,y,z,random));
+  }
+  return true;
+}
+
 export function generateDoublePlant189(world, random, x, y, z, variant) {
   if (!Number.isInteger(variant) || variant < 0 || variant > 5) throw new RangeError('Invalid double plant variant');
   let placed=false;

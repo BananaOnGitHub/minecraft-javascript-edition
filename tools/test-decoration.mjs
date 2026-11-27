@@ -5,6 +5,31 @@ import { test } from 'node:test';
 import { JavaRandom } from '../client/js/local-world/java-random.js';
 import { generateDoublePlant189 } from '../client/js/local-world/generation/v1_8_9/decoration.js';
 
+test('springs match all isolated native propagation states and caller RNG', async () => {
+  const {generateSpring189}=await import('../client/js/local-world/generation/v1_8_9/decoration.js');
+  const fixture=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-decoration-springs.json.gz',import.meta.url))));
+  for(const c of fixture.cases) {
+    const blocks=new Map(),key=(x,y,z)=>`${x},${y},${z}`;
+    const base=(x,y,z)=>{
+      const dx=x-c.ox,dz=z-c.oz;
+      const stone=(dx===0&&dz===0&&(y===c.oy-1||y===c.oy+1))||(y===c.oy&&((dx===-1&&dz===0)||(dx===0&&dz===-1)||(c.variant!==1&&dx===0&&dz===1)||(c.variant===2&&dx===1&&dz===0)||(c.variant===3&&dx===0&&dz===0)));
+      return stone?16:y<63?16:y===63?c.surface:0;
+    };
+    const world={random:new JavaRandom(7n),get:(x,y,z)=>blocks.get(key(x,y,z))??base(x,y,z),set:(x,y,z,s)=>blocks.set(key(x,y,z),s)};
+    const random=new JavaRandom(BigInt(c.seed));
+    const label=`${c.liquid} seed=${c.seed}, y=${c.oy}, shape=${c.variant}`;
+    assert.equal(generateSpring189(world,random,c.ox,c.oy,c.oz,c.liquid==='flowing_water'?'water':'lava'),c.ok,label);
+    assert.equal(random.nextInt(),c.rngAfter,`${label} RNG`);
+    const actual=[];
+    for(let y=55;y<80;y++)for(let dz=-8;dz<=8;dz++)for(let dx=-8;dx<=8;dx++) {
+      const state=world.get(c.ox+dx,y,c.oz+dz);
+      if(state!==base(c.ox+dx,y,c.oz+dz))actual.push([dx,y-c.oy,dz,state]);
+    }
+    assert.deepEqual(actual,c.blocks,label);
+  }
+  assert.equal(fixture.cases.length,48);
+});
+
 test('double plants match isolated native placements and caller RNG', async () => {
   const fixture=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-decoration.json.gz',import.meta.url))));
   const cases=fixture.cases.filter(c=>c.kind==='double');

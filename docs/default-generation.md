@@ -257,14 +257,26 @@ the fixtures cover bright open-air conditions, not real dark-world lighting.
 Its scatter loop uses the previously verified flower routine; MIT Glowstone
 `MushroomDecorator.java` informed the light and substrate distinction.
 
-Spring source-placement constraints were investigated against MIT Glowstone
-`FlowingLiquidDecorator.java`. A 48-case native fixture covers both fluids,
-three seeds, two elevations and four neighboring-block configurations. The
-first unresolved discrepancy is immediate liquid propagation: at seed 1,
-Y=64, the successful water case changes 74 observed block states and the lava
-case changes 10. A generator that only writes the source would fail these
-fixtures. No spring implementation is claimed until a compatible fluid-update
-contract and the surrounding propagation are validated.
+`generateSpring189(world, random, x, y, z, kind, updates?)` now matches all 48
+unchanged spring fixtures: both fluids, three seeds, two elevations, four
+neighbor configurations, exact observed states and caller RNG. Seed 1 at Y=64
+produces the reference's 74 water changes and 10 lava changes. The initial tick
+uses the feature RNG; nested immediate scheduling uses the world RNG.
+
+`fluids.js` contains independently authored `FluidUpdates189` primitives for
+level updates, shortest downward-path selection, falling metadata, conversion
+between flowing/still IDs, fluid contact, and synchronous neighbor updates.
+MIT Glowstone `BlockLiquid.java` and `FlowingLiquidDecorator.java` informed
+the material/placement rules, not a claim of version parity for Glowstone's
+different pulse engine. Numerical native captures determine compatibility.
+The host supplies synchronous get/set and its world RNG (`world.random` or an
+explicit constructor argument). `runImmediate` scopes recursive generation-time
+updates and restores the previous mode even on exceptions. Ordinary scheduling
+requests are retained in `scheduled` or delivered to a supplied `schedule`
+callback; they are never automatically advanced as runtime ticks. No gameplay
+or population integration is enabled. Broader flow/contact scenarios and world
+RNG observations are being validated separately; the existing fixtures assert
+only caller RNG and their captured volume, not an entire runtime engine.
 
 `generateIcePatch189` matches 12 packed-ice patch fixtures on snow and grass,
 at two elevations, three seeds and chunk boundaries, including post-call RNG.
@@ -296,6 +308,6 @@ overlapping ellipsoids derive from MIT Glowstone `StoneBoulder.java`, with
 reference-corrected offsets. Mixed soils, non-solid obstructions, and replaceable
 plants need further coverage.
 
-Springs, flowers' biome selection, and other biome-specific
+Flowers' biome selection and other biome-specific
 features remain unimplemented and unvalidated. The population planner's semantics
 differ from legacy population; these independent features are not connected to it.
