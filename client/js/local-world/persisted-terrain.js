@@ -1,4 +1,7 @@
+import { PopulationPlanner } from './population.js';
+
 const CACHE_LIMIT = 384;
+const RAW_CACHE_LIMIT = 64;
 const keyOf = (x, z) => x + ',' + z;
 const blockIndex = (x, y, z) => y * 256 + (z & 15) * 16 + (x & 15);
 
@@ -18,6 +21,12 @@ export class PersistedTerrain {
     this.maxY = generator.maxY;
     this.chunkLimit = generator.chunkLimit;
     this.viewDistanceLimit = generator.viewDistanceLimit;
+    if (generator.population) {
+      this.rawCache = new Map();
+      this.rawPending = new Map();
+      this.population = new PopulationPlanner({ generator, worldId: this.worldId,
+        generatorId: this.generatorId, store, loadBase: (x, z) => this.readRawColumn(x, z) });
+    }
   }
 
   contains(x, z) { return this.generator.contains(x, z); }
@@ -33,7 +42,7 @@ export class PersistedTerrain {
     await pending;
   }
 
-  async loadColumn(x, z) {
+  async readStoredColumn(x, z) {
     let record = await this.store.loadChunk(this.worldId, x, z);
     if (!record) {
       const column = this.generator.column(x, z);
@@ -48,6 +57,32 @@ export class PersistedTerrain {
         !(record.biomes instanceof Uint8Array) || record.biomes.length !== 256) {
       throw new Error('Stored chunk data does not match this world generator.');
     }
+    return record;
+  }
+
+  async readRawColumn(x, z) {
+    const key = keyOf(x, z);
+    const cached = this.rawCache.get(key);
+    if (cached) {
+      this.rawCache.delete(key);
+      this.rawCache.set(key, cached);
+      return cached;
+    }
+    let pending = this.rawPending.get(key);
+    if (!pending) {
+      pending = this.readStoredColumn(x, z).then(record => {
+        this.rawCache.set(key, record);
+        if (this.rawCache.size > RAW_CACHE_LIMIT) this.rawCache.delete(this.rawCache.keys().next().value);
+        return record;
+      }).finally(() => this.rawPending.delete(key));
+      this.rawPending.set(key, pending);
+    }
+    return pending;
+  }
+
+  async loadColumn(x, z) {
+    const base = this.population ? await this.readRawColumn(x, z) : await this.readStoredColumn(x, z);
+    const record = this.population ? await this.population.completeColumn(x, z, base) : base;
     this.cache.set(keyOf(x, z), record);
     if (this.cache.size > CACHE_LIMIT) this.cache.delete(this.cache.keys().next().value);
   }
@@ -101,6 +136,11 @@ export class PersistedTerrain {
   }
 
   get cachedBytes() {
-    return [...this.cache.values()].reduce((sum, chunk) => sum + chunk.states.byteLength + chunk.biomes.byteLength, 0);
+    const arrays = new Set();
+    for (const chunk of [...this.cache.values(), ...(this.rawCache?.values() ?? [])]) {
+      arrays.add(chunk.states);
+      arrays.add(chunk.biomes);
+    }
+    return [...arrays].reduce((sum, array) => sum + array.byteLength, 0);
   }
 }

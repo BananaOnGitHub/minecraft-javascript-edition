@@ -3,15 +3,17 @@ import { uniqueDirectory } from './world-metadata.js';
 export const WORLD_DATABASE = 'minecraftjs-terrace-worlds'
 const STORE = 'checkpoints'
 const CHUNKS = 'world-chunks'
+const POPULATION = 'world-population'
 
 export function openCheckpointStore(databaseName, indexedDB = globalThis.indexedDB) {
   return new Promise((resolve, reject) => {
     if (!indexedDB) throw new Error('Local world storage is unavailable in this browser')
-    const request = indexedDB.open(databaseName, 2)
+    const request = indexedDB.open(databaseName, 3)
     let blocked = false
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE, { keyPath: 'id' })
       if (!request.result.objectStoreNames.contains(CHUNKS)) request.result.createObjectStore(CHUNKS, { keyPath: ['worldId', 'x', 'z'] })
+      if (!request.result.objectStoreNames.contains(POPULATION)) request.result.createObjectStore(POPULATION, { keyPath: ['worldId', 'generatorId', 'stageId', 'x', 'z'] })
     }
     request.onerror = () => reject(request.error)
     request.onblocked = () => {
@@ -149,6 +151,24 @@ function checkpointStore(database) {
           complete(read.result ?? record)
         }
       }, CHUNKS)
+    },
+    loadPopulation(worldId, generatorId, stageId, x, z) {
+      return transact('readonly', (store, complete) => {
+        const read = store.get([worldId, generatorId, stageId, x, z])
+        read.onsuccess = () => complete(read.result)
+      }, POPULATION)
+    },
+    savePopulation(record) {
+      // A complete source batch (including an empty batch) is the completion
+      // marker. Its cross-column changes commit together and cannot be replayed
+      // partially after a reload. Competing writers keep the first durable plan.
+      return transact('readwrite', (store, complete) => {
+        const read = store.get([record.worldId, record.generatorId, record.stageId, record.x, record.z])
+        read.onsuccess = () => {
+          if (!read.result) store.add(record)
+          complete(read.result ?? record)
+        }
+      }, POPULATION)
     },
     save,
     close() {
