@@ -1,5 +1,5 @@
 {
-  "matched": 16,
+  "matched": 20,
   "total": 20,
   "cases": [
     {
@@ -78,97 +78,25 @@
       "name": "mushroom-canopy",
       "x": 6415,
       "z": 6415,
-      "firstDifference": {
-        "step": 0,
-        "kind": "light",
-        "position": [
-          -2,
-          64,
-          -2
-        ],
-        "actual": [
-          10,
-          0,
-          10
-        ],
-        "native": [
-          13,
-          0,
-          13
-        ]
-      }
+      "firstDifference": null
     },
     {
       "name": "mushroom-canopy",
       "x": -6385,
       "z": -6385,
-      "firstDifference": {
-        "step": 0,
-        "kind": "light",
-        "position": [
-          -2,
-          64,
-          -2
-        ],
-        "actual": [
-          10,
-          0,
-          10
-        ],
-        "native": [
-          13,
-          0,
-          13
-        ]
-      }
+      "firstDifference": null
     },
     {
       "name": "cave",
       "x": 6415,
       "z": 6415,
-      "firstDifference": {
-        "step": 0,
-        "kind": "light",
-        "position": [
-          -2,
-          64,
-          -2
-        ],
-        "actual": [
-          0,
-          0,
-          0
-        ],
-        "native": [
-          13,
-          0,
-          13
-        ]
-      }
+      "firstDifference": null
     },
     {
       "name": "cave",
       "x": -6385,
       "z": -6385,
-      "firstDifference": {
-        "step": 0,
-        "kind": "light",
-        "position": [
-          -2,
-          64,
-          -2
-        ],
-        "actual": [
-          0,
-          0,
-          0
-        ],
-        "native": [
-          13,
-          0,
-          13
-        ]
-      }
+      "firstDifference": null
     },
     {
       "name": "mix",
