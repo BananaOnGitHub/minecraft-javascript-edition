@@ -106,7 +106,7 @@ function canReplaceForLeaf(world, x, y, z) {
 
 function isNonFullBlock(world,x,y,z) {
   const state=world.get(x,y,z);
-  return world.isFullCube?!world.isFullCube(state):state===0;
+  return world.isFullBlock?!world.isFullBlock(state):world.isFullCube?!world.isFullCube(state):state===0;
 }
 
 function addVine(world, x, y, z, vineState) {
@@ -1068,7 +1068,7 @@ export function generateShrub189(
   z,
   logState = LOG_JUNGLE,
   leafState = LEAVES_OAK_DEFAULT,
-  isFullCube = world.isFullCube??(state=>state!==0)
+  isFullCube = world.isFullBlock??world.isFullCube??(state=>state!==0)
 ) {
   let cy = y;
   while (cy > 0) {

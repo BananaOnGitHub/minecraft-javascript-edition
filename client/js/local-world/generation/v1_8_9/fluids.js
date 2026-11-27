@@ -48,7 +48,8 @@ export class FluidUpdates189 {
     if(y<0||y>=256)return;
     const before=this.get(x,y,z);
     if(before===state)return;
-    this.world.set(x,y,z,state);
+    if(this.world.setRaw)this.world.setRaw(x,y,z,state);
+    else this.world.set(x,y,z,state);
     const kind=fluidKind189(state);
     if((before>>4)!==(state>>4)&&kind) {
       if(!this.mix(x,y,z)&&(state>>4)===flowingId(kind))this.request(x,y,z,kind);

@@ -1,0 +1,54 @@
+{
+  "datasets": [
+    {
+      "file": "vanilla-189-biome-decoration",
+      "matched": 10,
+      "total": 118,
+      "firstDifference": {
+        "biome": 5,
+        "seed": 1,
+        "terrain": "grass",
+        "lightMismatch": {
+          "call": 7299,
+          "x": 6412,
+          "y": 69,
+          "z": 6415,
+          "actual": 14,
+          "native": 13
+        },
+        "blockMismatch": null,
+        "rngCall": -1,
+        "worldRngActual": -126650693,
+        "worldRngNative": -126650693
+      }
+    },
+    {
+      "file": "vanilla-189-biome-decoration-extra",
+      "matched": 10,
+      "total": 22,
+      "firstDifference": {
+        "biome": 6,
+        "seed": 3,
+        "terrain": "flat",
+        "lightMismatch": {
+          "call": 8497,
+          "x": 6422,
+          "y": 65,
+          "z": 6406,
+          "actual": 13,
+          "native": 10
+        },
+        "blockMismatch": {
+          "x": 6415,
+          "y": 64,
+          "z": 6409,
+          "actual": 0,
+          "native": 624
+        },
+        "rngCall": -1,
+        "worldRngActual": -125881196,
+        "worldRngNative": -125881196
+      }
+    }
+  ]
+}

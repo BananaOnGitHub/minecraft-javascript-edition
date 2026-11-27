@@ -1,0 +1,198 @@
+{
+  "matched": 16,
+  "total": 20,
+  "cases": [
+    {
+      "name": "open",
+      "x": 6415,
+      "z": 6415,
+      "firstDifference": null
+    },
+    {
+      "name": "open",
+      "x": -6385,
+      "z": -6385,
+      "firstDifference": null
+    },
+    {
+      "name": "glass",
+      "x": 6415,
+      "z": 6415,
+      "firstDifference": null
+    },
+    {
+      "name": "glass",
+      "x": -6385,
+      "z": -6385,
+      "firstDifference": null
+    },
+    {
+      "name": "leaves",
+      "x": 6415,
+      "z": 6415,
+      "firstDifference": null
+    },
+    {
+      "name": "leaves",
+      "x": -6385,
+      "z": -6385,
+      "firstDifference": null
+    },
+    {
+      "name": "water",
+      "x": 6415,
+      "z": 6415,
+      "firstDifference": null
+    },
+    {
+      "name": "water",
+      "x": -6385,
+      "z": -6385,
+      "firstDifference": null
+    },
+    {
+      "name": "torch",
+      "x": 6415,
+      "z": 6415,
+      "firstDifference": null
+    },
+    {
+      "name": "torch",
+      "x": -6385,
+      "z": -6385,
+      "firstDifference": null
+    },
+    {
+      "name": "glowstone",
+      "x": 6415,
+      "z": 6415,
+      "firstDifference": null
+    },
+    {
+      "name": "glowstone",
+      "x": -6385,
+      "z": -6385,
+      "firstDifference": null
+    },
+    {
+      "name": "mushroom-canopy",
+      "x": 6415,
+      "z": 6415,
+      "firstDifference": {
+        "step": 0,
+        "kind": "light",
+        "position": [
+          -2,
+          64,
+          -2
+        ],
+        "actual": [
+          10,
+          0,
+          10
+        ],
+        "native": [
+          13,
+          0,
+          13
+        ]
+      }
+    },
+    {
+      "name": "mushroom-canopy",
+      "x": -6385,
+      "z": -6385,
+      "firstDifference": {
+        "step": 0,
+        "kind": "light",
+        "position": [
+          -2,
+          64,
+          -2
+        ],
+        "actual": [
+          10,
+          0,
+          10
+        ],
+        "native": [
+          13,
+          0,
+          13
+        ]
+      }
+    },
+    {
+      "name": "cave",
+      "x": 6415,
+      "z": 6415,
+      "firstDifference": {
+        "step": 0,
+        "kind": "light",
+        "position": [
+          -2,
+          64,
+          -2
+        ],
+        "actual": [
+          0,
+          0,
+          0
+        ],
+        "native": [
+          13,
+          0,
+          13
+        ]
+      }
+    },
+    {
+      "name": "cave",
+      "x": -6385,
+      "z": -6385,
+      "firstDifference": {
+        "step": 0,
+        "kind": "light",
+        "position": [
+          -2,
+          64,
+          -2
+        ],
+        "actual": [
+          0,
+          0,
+          0
+        ],
+        "native": [
+          13,
+          0,
+          13
+        ]
+      }
+    },
+    {
+      "name": "mix",
+      "x": 6415,
+      "z": 6415,
+      "firstDifference": null
+    },
+    {
+      "name": "mix",
+      "x": -6385,
+      "z": -6385,
+      "firstDifference": null
+    },
+    {
+      "name": "support",
+      "x": 6415,
+      "z": 6415,
+      "firstDifference": null
+    },
+    {
+      "name": "support",
+      "x": -6385,
+      "z": -6385,
+      "firstDifference": null
+    }
+  ]
+}

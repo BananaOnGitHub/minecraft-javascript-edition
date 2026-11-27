@@ -55,6 +55,7 @@ feature events with origins, variants, feature RNG state, and return values.
 | `canPlace(state,x,y,z)` | Current support, light, sky and block-specific plant placement rules |
 | `isOpaque(state)` | Opaque-cube predicate for giant mushrooms |
 | `isFullCube(state)` | Full-block predicate for shrubs and spruce foliage; leaves are not interchangeable with air here |
+| `isFullBlock(state)` | Optional exact native full-block predicate; preferred by shrub/spruce helpers when present, distinct from native `isFullCube` |
 | `canAttachVine(world,x,y,z)` | Version-specific support-face predicate |
 | `random` | Separate Java-compatible world RNG; constructor argument to `FluidUpdates189` may supply it explicitly |
 
@@ -63,6 +64,9 @@ pure functions of their arguments. The material movement palette used by
 cactus/fluid placement remains separate from opacity/full-block predicates.
 The host must provide version-correct lighting and block physics. A constant
 "bright" predicate is insufficient under canopies and inside caves.
+The independent host now exists, but its larger-canopy lighting is not yet
+compatible; see [generation-world.md](generation-world.md). The 140-case results
+below remain controlled-host orchestrator results.
 
 Reuse one `FluidUpdates189` for the call/context, with its host callbacks for
 displacement and nonfluid neighbor physics. World writes must not independently
