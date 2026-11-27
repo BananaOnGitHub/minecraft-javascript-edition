@@ -69,6 +69,13 @@ they do not establish structure or fully populated parity.
 
 ## Reference reproduction
 
+The handed-off ore and tree modules are also covered by the generation suite.
+The large-oak instance lifecycle correction and reproducible black-box probe
+are documented in [big-oak-generation.md](big-oak-generation.md). Shared and
+fresh instances are tested separately; the handoff fixture's numerical block
+data is preserved. These isolated feature checks do not establish full
+decoration or population parity.
+
 Run `npm run test:default-generation` for checked-in numerical fixtures.
 No game jar is required for the tests. `tools/VanillaGenerationFixture.java`
 uses reflection to invoke the locally supplied dedicated server as a black-box

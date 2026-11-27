@@ -5,6 +5,22 @@ import { gunzipSync } from 'node:zlib';
 import { DefaultTerrain189, BIOME_HEIGHTS } from '../client/js/local-world/generation/v1_8_9/default.js';
 import { replaceSurfaces189 } from '../client/js/local-world/generation/v1_8_9/surface.js';
 import { carveCaves189, carveRavines189 } from '../client/js/local-world/generation/v1_8_9/carvers.js';
+import { generateStandardOres189, generateExtremeHillsOres189 } from '../client/js/local-world/generation/v1_8_9/ores.js';
+import {
+  generateOakTree189,
+  generateBigOakTree189,
+  BigOakTree189,
+  generateBirchTree189,
+  generateTaiga1Tree189,
+  generateTaiga2Tree189,
+  generateMegaJungleTree189,
+  generateMegaPineTree189,
+  generateMegaPinePodzol189,
+  generateSavannaTree189,
+  generateCanopyTree189,
+  generateSwampTree189,
+  generateShrub189,
+} from '../client/js/local-world/generation/v1_8_9/trees.js';
 import { Biomes189, GENERATOR_ID } from '../client/js/local-world/generation/v1_8_9/biomes.js';
 import { JavaRandom } from '../client/js/local-world/java-random.js';
 import { ImprovedNoise189, SimplexNoise189, PerlinOctaves189, SimplexOctaves189 } from '../client/js/local-world/generation/v1_8_9/noise.js';
@@ -145,4 +161,136 @@ test('carved terrain is independent of chunk request order', () => {
   generator.carvedColumn(262,2);
   assert.deepEqual(generator.carvedColumn(-229,-236).states,before.states);
   assert.deepEqual(new DefaultTerrain189('7').carvedColumn(-229,-236).states,before.states);
+});
+
+test('1.8.9 standard ore generation matches native BiomeDecorator across seeds and negative coordinates', async () => {
+  const fixture = JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-ores.json', import.meta.url).pathname.replace(/\.json$/, '.json.gz'))));
+  let totalPlaced = 0;
+  for (const c of fixture.cases.filter(entry => entry.kind === 'standard')) {
+    const blocks = new Map();
+    const world = {
+      get: (x, y, z) => blocks.get(`${x},${y},${z}`) ?? 16,
+      set: (x, y, z, state) => blocks.set(`${x},${y},${z}`, state),
+    };
+    generateStandardOres189(world, new JavaRandom(BigInt(c.seed)), c.cx * 16, c.cz * 16);
+    const expected = new Map(c.placed.map(([x, y, z, state]) => [`${x},${y},${z}`, state]));
+    assert.equal(blocks.size, expected.size, `seed=${c.seed}, chunk=${c.cx},${c.cz} count`);
+    for (const [key, state] of expected) {
+      assert.equal(blocks.get(key) ?? 16, state, `seed=${c.seed}, pos=${key}`);
+    }
+    totalPlaced += expected.size;
+  }
+  assert.equal(totalPlaced, 22146);
+
+  // Verify Extreme Hills emerald (no +8 offset) and silverfish (with +8 offset) replace stone variants.
+  const hillBlocks = new Map([['0,4,0', 17]]); // granite at (0,4,0) should still be replaceable by emerald/silverfish
+  const hillWorld = {
+    get: (x, y, z) => hillBlocks.get(`${x},${y},${z}`) ?? 16,
+    set: (x, y, z, state) => hillBlocks.set(`${x},${y},${z}`, state),
+  };
+  generateExtremeHillsOres189(hillWorld, new JavaRandom(777n), 108 * 16, 108 * 16);
+  const emeralds = [...hillBlocks.entries()].filter(([, s]) => s === (129 << 4));
+  const eggs = [...hillBlocks.entries()].filter(([, s]) => s === (97 << 4));
+  assert.ok(emeralds.length >= 3 && emeralds.length <= 8);
+  for (const [k] of emeralds) {
+    const [x, y, z] = k.split(',').map(Number);
+    assert.ok(x >= 108 * 16 && x < 109 * 16 && z >= 108 * 16 && z < 109 * 16 && y >= 4 && y < 32);
+  }
+  assert.ok(eggs.length > 0);
+});
+
+test('1.8.9 tree generators match native server blocks, metadata, cocoa, vines, and leaf check_decay', async () => {
+  const treesFixture = JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-trees.json.gz', import.meta.url))));
+  const LOG_JUNGLE = (17 << 4) | 3;
+  const LEAVES_JUNGLE = (18 << 4) | 3;
+  const LEAVES_OAK_DEFAULT = (18 << 4) | 8;
+  // The handoff's native probe reused one large-oak generator for seeds 1, 2,
+  // and 7, retaining its height between calls. Other cases use fresh instances.
+  const bigOak = new BigOakTree189();
+
+  for (const c of treesFixture.cases) {
+    const blocks = new Map();
+    const key = (x, y, z) => `${x},${y},${z}`;
+    const world = {
+      get: (x, y, z) => {
+        if (blocks.has(key(x, y, z))) return blocks.get(key(x, y, z));
+        if (y < 63) return 16;
+        if (y === 63) return 32;
+        return 0;
+      },
+      set: (x, y, z, state) => blocks.set(key(x, y, z), state),
+    };
+    const rand = new JavaRandom(BigInt(c.seed));
+    let ok = false;
+    switch (c.kind) {
+      case 'oak': ok = generateOakTree189(world, rand, c.ox, c.oy, c.oz); break;
+      case 'oak_vines_jungle': ok = generateOakTree189(world, rand, c.ox, c.oy, c.oz, 4, LOG_JUNGLE, LEAVES_JUNGLE, true); break;
+      case 'big_oak': ok = bigOak.generate(world, rand, c.ox, c.oy, c.oz); break;
+      case 'birch': ok = generateBirchTree189(world, rand, c.ox, c.oy, c.oz, false); break;
+      case 'super_birch': ok = generateBirchTree189(world, rand, c.ox, c.oy, c.oz, true); break;
+      case 'taiga1': ok = generateTaiga1Tree189(world, rand, c.ox, c.oy, c.oz); break;
+      case 'taiga2': ok = generateTaiga2Tree189(world, rand, c.ox, c.oy, c.oz); break;
+      case 'mega_jungle': ok = generateMegaJungleTree189(world, rand, c.ox, c.oy, c.oz); break;
+      case 'mega_pine':
+        ok = generateMegaPineTree189(world, rand, c.ox, c.oy, c.oz, false);
+        if (ok) generateMegaPinePodzol189(world, rand, c.ox, c.oy, c.oz);
+        break;
+      case 'mega_spruce':
+        ok = generateMegaPineTree189(world, rand, c.ox, c.oy, c.oz, true);
+        if (ok) generateMegaPinePodzol189(world, rand, c.ox, c.oy, c.oz);
+        break;
+      case 'savanna': ok = generateSavannaTree189(world, rand, c.ox, c.oy, c.oz); break;
+      case 'canopy': ok = generateCanopyTree189(world, rand, c.ox, c.oy, c.oz); break;
+      case 'swamp': ok = generateSwampTree189(world, rand, c.ox, c.oy, c.oz); break;
+      case 'shrub': ok = generateShrub189(world, rand, c.ox, c.oy, c.oz, LOG_JUNGLE, LEAVES_OAK_DEFAULT); break;
+      default: throw new Error(`Unknown tree kind ${c.kind}`);
+    }
+    assert.equal(ok, c.ok, `${c.kind} seed=${c.seed} ok`);
+    const actual = [];
+    for (let dy = 58; dy < 110; dy++) {
+      for (let dz = -16; dz < 16; dz++) {
+        for (let dx = -16; dx < 16; dx++) {
+          const st = world.get(c.ox + dx, dy, c.oz + dz);
+          const exp = dy < 63 ? 16 : (dy === 63 ? 32 : 0);
+          if (st !== exp) actual.push([dx, dy - c.oy, dz, st]);
+        }
+      }
+    }
+    assert.deepEqual(actual, c.blocks, `${c.kind} seed=${c.seed} blocks mismatch`);
+  }
+});
+
+test('large oak retains instance height and RNG lifecycle while fresh calls remain independent', async () => {
+  const fixture=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-big-oak-lifecycle.json.gz',import.meta.url))));
+  const previous=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-trees.json.gz',import.meta.url))));
+  const shared=new BigOakTree189();
+  let cases=0;
+  for(const c of fixture.cases) {
+    const blocks=new Map(),key=(x,y,z)=>`${x},${y},${z}`;
+    const world={
+      get:(x,y,z)=>blocks.get(key(x,y,z))??(y<63?16:y===63?32:0),
+      set:(x,y,z,state)=>blocks.set(key(x,y,z),state),
+    };
+    const random=new JavaRandom(BigInt(c.seed));
+    const ok=c.lifecycle==='shared'?shared.generate(world,random,c.ox,c.oy,c.oz):
+      generateBigOakTree189(world,random,c.ox,c.oy,c.oz);
+    const label=`${c.lifecycle}, seed=${c.seed}`;
+    assert.equal(ok,c.ok,label+' result');
+    assert.equal(random.nextInt(),c.rngAfter,label+' caller RNG');
+    if(c.lifecycle==='shared') {
+      assert.equal(shared.heightLimit,c.heightLimit,label+' retained height');
+      assert.deepEqual(c.blocks,previous.cases.find(p=>p.kind==='big_oak'&&p.seed===c.seed).blocks,
+        label+' original handoff fixture remains unchanged');
+    }
+    const actual=[];
+    for(let by=58;by<110;by++)for(let dz=-16;dz<16;dz++)for(let dx=-16;dx<16;dx++) {
+      const value=world.get(c.ox+dx,by,c.oz+dz),base=by<63?16:by===63?32:0;
+      if(value!==base)actual.push([dx,by-c.oy,dz,value]);
+    }
+    assert.deepEqual(actual,c.blocks,label+' blocks and metadata');
+    cases++;
+  }
+  assert.equal(cases,6);
+  assert.equal(fixture.cases.find(c=>c.lifecycle==='fresh'&&c.seed===7).heightLimit,13);
+  assert.equal(fixture.cases.find(c=>c.lifecycle==='shared'&&c.seed===7).heightLimit,14);
 });
