@@ -150,14 +150,52 @@ Negative division uses floor semantics. Mesa similarity remains asymmetric.
 
 ## Remaining dependency order
 
-1. Complete isolated biome vegetation and decoration features. Standard ore
-   generation and individual tree generators are implemented and tested.
+1. Expand complete biome-decoration validation on natural terrain and unusual
+   placement environments. All 59 Overworld biomes have controlled invocations.
 2. Implement structures and population with explicit legacy order semantics.
 3. Register the new generator only with an honest supported-stage contract,
    preserving old generator IDs and stored columns. Measure worker latency and
    memory once complete column generation is available.
 
 ## Isolated decoration features
+
+### Biome orchestration checkpoint
+
+`BiomeDecoration189` in `biome-decoration.js` sequences the existing ore, tree,
+plant, sediment, spring and special-feature implementations against a mutable,
+synchronous world. It is independent of the incompatible population planner.
+All **118/118 complete controlled invocations**, two seeds over all **59
+registered Overworld biomes**, match exact changed states, both RNG streams,
+and numerical feature-boundary observations. The capture includes mutations,
+negative coordinates, and writes outside the source chunk. Natural-terrain and
+targeted successful pre-decoration cases are the next validation milestone.
+
+The host supplies current height/top-solid-or-liquid queries, placement/light
+predicates, opacity/full-cube/material rules, and a separate world RNG. The test
+adapter consumes numerical native lighting observations at mushroom attempts;
+it does not claim to implement the runtime lighting engine. Native reads can
+change cached lighting during a patch, so a single final light snapshot is not
+a valid substitute. Fluid scheduling remains owned by `FluidUpdates189`, with
+no automatic draining of deferred requests.
+
+The orchestration preserves per-biome large-oak and giant-mushroom lifetimes.
+Biome preparation raises large-oak foliage depth to five without resetting its
+retained height. Integration fixtures also verify spruce obstruction/leaf
+replacement and shrub replacement of non-full blocks, beyond earlier open-air
+tree fixtures. Existing isolated fixtures are preserved. 1.8.9 Mesa does **not**
+receive the later-version extra-gold feature.
+
+MIT Glowstone's `BiomePopulator` and family-specific populators informed the
+independent implementation. Its later-version counts/order were not used as an
+oracle; complete calls into the local 1.8.9 server establish the version-specific
+behavior. The existing MIT notice remains in `third-party/glowstone/LICENSE`.
+The extended existing capture runner accepts mode `biomes`; its auxiliary
+`probe-biome-decoration.js` records dictionary-compressed RNG traces and
+numerical world-service observations. Delegating observers were checked against
+the unwrapped capture: all 118 state changes and RNG traces remain identical.
+
+Regression checkpoint: `npm run test:default-generation` includes the new complete
+invocation suite alongside every original generation and decoration fixture.
 
 `generateDoublePlant189(world, random, x, y, z, variant)` in `decoration.js`
 generates one double-plant patch using synchronous `world.get` / `world.set`

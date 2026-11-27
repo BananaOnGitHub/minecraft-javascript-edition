@@ -104,6 +104,11 @@ function canReplaceForLeaf(world, x, y, z) {
   return id === 0 || isLeafId(id);
 }
 
+function isNonFullBlock(world,x,y,z) {
+  const state=world.get(x,y,z);
+  return world.isFullCube?!world.isFullCube(state):state===0;
+}
+
 function addVine(world, x, y, z, vineState) {
   setBlockWithLeafBreak(world, x, y, z, vineState);
 }
@@ -261,6 +266,10 @@ export function generateOakTree189(
 export class BigOakTree189 {
   constructor() { this.heightLimit = 0; }
 
+  // Biome decoration's preparation hook raises foliage depth, while retaining
+  // the previously selected height. Fresh isolated calls retain depth four.
+  prepare() { this.leafDistanceLimit=5; }
+
   generate(world, rand, x, y, z) {
     return generateBigOakTree189(world, rand, x, y, z, this);
   }
@@ -275,7 +284,7 @@ export function generateBigOakTree189(world, rand, x, y, z, instance = { heightL
   const leafDensity = 1.0;
   const trunkSize = 1;
   const heightLimitLimit = 12;
-  const leafDistanceLimit = 4;
+  const leafDistanceLimit = instance.leafDistanceLimit??4;
 
   // The generator retains its selected height between calls. Only the first
   // call draws it; drawing it again shifts every subsequent foliage sample.
@@ -500,7 +509,7 @@ export function generateTaiga1Tree189(world, rand, x, y, z) {
       const dx = cx - x;
       for (let cz = z - radius; cz <= z + radius; cz++) {
         const dz = cz - z;
-        if ((Math.abs(dx) !== radius || Math.abs(dz) !== radius || radius <= 0) && canReplaceForLeaf(world, cx, cy, cz)) {
+        if ((Math.abs(dx) !== radius || Math.abs(dz) !== radius || radius <= 0) && isNonFullBlock(world, cx, cy, cz)) {
           setBlockWithLeafBreak(world, cx, cy, cz, LEAVES_SPRUCE);
         }
       }
@@ -532,7 +541,7 @@ export function generateTaiga2Tree189(world, rand, x, y, z) {
     const radius = cy - y < stemHeight ? 0 : maxRadius;
     for (let cx = x - radius; cx <= x + radius; cx++) {
       for (let cz = z - radius; cz <= z + radius; cz++) {
-        if (cy < 0 || cy >= 256 || !canGrowInto(world.get(cx, cy, cz) >> 4)) return false;
+        if (cy < 0 || cy >= 256 || !isAirOrLeaves(world.get(cx, cy, cz) >> 4)) return false;
       }
     }
   }
@@ -551,7 +560,7 @@ export function generateTaiga2Tree189(world, rand, x, y, z) {
       for (let cz = z - radius; cz <= z + radius; cz++) {
         const dz = cz - z;
         if (Math.abs(dx) !== radius || Math.abs(dz) !== radius || radius <= 0) {
-          if (canReplaceForLeaf(world, cx, cy, cz)) {
+          if (isNonFullBlock(world, cx, cy, cz)) {
             setBlockWithLeafBreak(world, cx, cy, cz, LEAVES_SPRUCE);
           }
         }
@@ -1059,7 +1068,8 @@ export function generateShrub189(
   y,
   z,
   logState = LOG_JUNGLE,
-  leafState = LEAVES_OAK_DEFAULT
+  leafState = LEAVES_OAK_DEFAULT,
+  isFullCube = world.isFullCube??(state=>state!==0)
 ) {
   let cy = y;
   while (cy > 0) {
@@ -1080,7 +1090,7 @@ export function generateShrub189(
           const dz = lz - z;
           if (
             (Math.abs(dx) !== radius || Math.abs(dz) !== radius || rand.nextInt(2) !== 0) &&
-            (world.get(lx, ly, lz) >> 4) === 0
+            !isFullCube(world.get(lx, ly, lz))
           ) {
             setBlockWithLeafBreak(world, lx, ly, lz, leafState);
           }

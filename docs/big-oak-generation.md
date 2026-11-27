@@ -22,6 +22,12 @@ so callers control lifetime rather than introducing hidden world/request order
 dependencies. A future population system must explicitly choose instance
 lifetime as part of its generation contract.
 
+Complete biome-decoration fixtures now additionally exercise the preparation
+hook used by biome tree calls: native preparation changes foliage depth from
+four to five while leaving retained height unchanged. `BigOakTree189.prepare()`
+exposes that behavior; ordinary isolated calls still use depth four. The full
+orchestrator owns generator instances and invokes preparation before generation.
+
 The original handoff fixture is unchanged: shared-instance seed 1 produces
 480 modified blocks, seed 2 produces 510, and seed 7 produces 444. The additional
 fixture checks shared and fresh instances separately, block states and metadata,

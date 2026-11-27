@@ -119,7 +119,8 @@ export function generateCactusPatch189(world,random,x,y,z,isSolid) {
     const bx=x+random.nextInt(8)-random.nextInt(8);
     const by=y+random.nextInt(4)-random.nextInt(4);
     const bz=z+random.nextInt(8)-random.nextInt(8);
-    if(by<0||by>=256||world.get(bx,by,bz)!==0)continue;
+    // Out-of-height air still consumes the attempted cactus height draws.
+    if(world.get(bx,by,bz)!==0)continue;
     const height=1+random.nextInt(random.nextInt(3)+1);
     for(let n=0;n<height;n++) {
       const yy=by+n;

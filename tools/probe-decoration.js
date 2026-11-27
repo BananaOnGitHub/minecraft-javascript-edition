@@ -2,6 +2,8 @@
 // Runtime ABI names only; no game source or assets. Derived from the handoff probe.
 var fixtureOutput = String(arguments[0]);
 var featureMode = String(arguments[1] || "double");
+var auxiliaryProbe = String(arguments[2] || '');
+var randomAfterInt = null;
 // Probe: re-capture big_oak for seeds 1, 2, 7 with correct world coords
 // This reproduces the exact fixture conditions
 
@@ -23,13 +25,14 @@ function makeRand(seed, calls) {
     setSeed: function(s) { if (ready) inner.setSeed(s); },
     nextInt: function(bound) {
       if(calls)calls.push(['nextInt',bound===undefined?null:Number(bound)]);
-      if (bound === undefined) return inner.nextInt();
-      return inner.nextInt(bound);
+      var value=bound===undefined?inner.nextInt():inner.nextInt(bound);
+      if(randomAfterInt)randomAfterInt(value,bound);
+      return value;
     },
     nextFloat: function() { if(calls)calls.push(['nextFloat']);return inner.nextFloat(); },
-    nextLong: function() { return inner.nextLong(); },
+    nextLong: function() { if(calls)calls.push(['nextLong']);return inner.nextLong(); },
     nextDouble: function() { if(calls)calls.push(['nextDouble']);return inner.nextDouble(); },
-    nextBoolean: function() { return inner.nextBoolean(); }
+    nextBoolean: function() { if(calls)calls.push(['nextBoolean']);return inner.nextBoolean(); }
   });
   var r = new R();
   ready = true;
@@ -86,6 +89,13 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
       }
     }
 
+    if(featureMode==='biomes') {
+      load(auxiliaryProbe);
+      var result=captureBiomeDecoration(world,setupGrass,getEncoded,rawSet,makeRand);
+      var stream=new java.util.zip.GZIPOutputStream(new java.io.FileOutputStream(fixtureOutput));
+      var writer=new java.io.PrintWriter(new java.io.OutputStreamWriter(stream,'UTF-8'));
+      writer.print(JSON.stringify(result));writer.close();print('WROTE '+fixtureOutput);return;
+    }
     var cases=[],materialMovement=[];
     if(featureMode==='fluids')for(var id=0;id<198;id++)materialMovement.push([id,Java.type('afh').c(id).t().c()]);
     var specs=[]; for(var variant=0;variant<6;variant++) specs.push({kind:"double",surface:32,variant:variant});
