@@ -91,6 +91,14 @@ public final class VanillaTerrainFixture {
                 out.print(",\"surfaceRandom\":[");
                 for(int i=0;i<trace.sandstone.size();i++){if(i>0)out.print(',');out.print(Arrays.toString(trace.sandstone.get(i)));}out.print(']');
                 randomField.set(gen,random);
+                Class<?> carver=Class.forName("any");
+                Method carve=carver.getMethod("a",Class.forName("amv"),Class.forName("adm"),int.class,int.class,primerClass);
+                Object caves=field(gen,"u"),ravines=field(gen,"z");
+                out.print(",\"caveClass\":\""+caves.getClass().getName()+"\",\"ravineClass\":\""+ravines.getClass().getName()+"\"");
+                carve.invoke(caves,gen,world,x,z,primer);
+                out.print(",\"caves\":");rle(out,primer(primer));
+                carve.invoke(ravines,gen,world,x,z,primer);
+                out.print(",\"ravines\":");rle(out,primer(primer));
                 out.print(",\"biomes\":");rle(out,Arrays.copyOf(biomeIds,256));
                 Object chunk=provider.getMethod("d",int.class,int.class).invoke(gen,x,z);
                 Object[] sections=(Object[])chunk.getClass().getMethod("h").invoke(chunk);

@@ -32,6 +32,7 @@ function materials(id,noise) {
 
 export function replaceSurfaces189(generator,cx,cz,column) {
   const {states,biomes}=column;
+  column.surfaceTops=new Map();
   const random=new JavaRandom(BigInt.asIntN(64,BigInt(cx)*341873128712n+BigInt(cz)*132897987541n));
   const noise=generator.surface.sample(cx*16,cz*16,16,16,.0625,.0625,1);
   for(let z=0;z<16;z++)for(let x=0;x<16;x++) {
@@ -54,6 +55,7 @@ export function replaceSurfaces189(generator,cx,cz,column) {
       }
     }
     const [initialTop,initialFiller]=materials(id,value);
+    column.surfaceTops.set(id,initialTop);
     let top=initialTop,filler=initialFiller,remaining=-1;
     const depth=Math.trunc(value/3+3+random.nextDouble()*.25);
     for(let y=255;y>=0;y--) {

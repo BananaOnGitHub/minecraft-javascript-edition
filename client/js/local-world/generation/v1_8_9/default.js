@@ -5,6 +5,7 @@ import { JavaRandom } from '../../java-random.js';
 import { Biomes189, GENERATOR_ID } from './biomes.js';
 import { PerlinOctaves189, SimplexOctaves189 } from './noise.js';
 import { replaceSurfaces189 } from './surface.js';
+import { carveCaves189, carveRavines189 } from './carvers.js';
 
 const f = Math.fround;
 // Legacy biome root height and variation, verified against runtime registry
@@ -105,4 +106,7 @@ export class DefaultTerrain189 {
     return {states,biomes:this.biomes.sample(cx*16,cz*16,16,16),density};
   }
   surfaceColumn(cx,cz) { return replaceSurfaces189(this,cx,cz,this.rawColumn(cx,cz)); }
+  carvedColumn(cx,cz) {
+    return carveRavines189(this.seed,cx,cz,carveCaves189(this.seed,cx,cz,this.surfaceColumn(cx,cz)));
+  }
 }

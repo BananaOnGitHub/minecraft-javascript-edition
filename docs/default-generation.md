@@ -57,6 +57,16 @@ on a fresh native biome singleton, before the cached world seed is updated.
 This implementation reproduces a fresh-process world independently of other
 worlds visited in the same browser, without process-history dependence.
 
+`carvedColumn(cx, cz)` adds independently implemented legacy caves and ravines.
+Both separate stages match all 86 native reference columns exactly, each
+5,636,096 / 5,636,096 states. Tests also require nonempty carve masks and cover
+water-blocked rooms, cross-chunk paths, lava state differences (still lava for
+caves, flowing lava for ravines), sandstone above openings, and surface repair.
+The implementation uses a float sine lookup table, exact Java RNG streams,
+signed long chunk mixing, and repeated float rounding in the walk. Request order
+tests include Mesa and water-boundary cases. These are carved-stage results;
+they do not establish structure or fully populated parity.
+
 ## Reference reproduction
 
 Run `npm run test:default-generation` for checked-in numerical fixtures.
@@ -133,7 +143,7 @@ Negative division uses floor semantics. Mesa similarity remains asymmetric.
 
 ## Remaining dependency order
 
-1. Implement caves and ravines, then ores, then biome vegetation and decoration.
+1. Implement ore veins and distribution, then biome vegetation and decoration.
 2. Implement structures and population with explicit legacy order semantics.
 3. Register the new generator only with an honest supported-stage contract,
    preserving old generator IDs and stored columns. Measure worker latency and

@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { gunzipSync } from 'node:zlib';
 import { DefaultTerrain189, BIOME_HEIGHTS } from '../client/js/local-world/generation/v1_8_9/default.js';
 import { replaceSurfaces189 } from '../client/js/local-world/generation/v1_8_9/surface.js';
+import { carveCaves189, carveRavines189 } from '../client/js/local-world/generation/v1_8_9/carvers.js';
 import { Biomes189, GENERATOR_ID } from '../client/js/local-world/generation/v1_8_9/biomes.js';
 import { JavaRandom } from '../client/js/local-world/java-random.js';
 import { ImprovedNoise189, SimplexNoise189, PerlinOctaves189, SimplexOctaves189 } from '../client/js/local-world/generation/v1_8_9/noise.js';
@@ -116,4 +117,32 @@ test('all 59 Overworld biome surfaces match native diagnostic terrain, including
     ids.add(c.biome);
   }
   assert.equal(ids.size,59);assert.equal(fixture.cases.length,177);
+});
+
+test('caves and ravines match separate native stages, including lava, water and surface repair', () => {
+  let caveChanges=0,ravineChanges=0;
+  for(const fixture of [...terrainFixtures,diverseTerrain]) {
+    const generator=new DefaultTerrain189(fixture.seed);
+    for(const c of fixture.columns) {
+      const column=generator.surfaceColumn(c.x,c.z),surface=column.states.slice();
+      carveCaves189(generator.seed,c.x,c.z,column);
+      const label=`seed=${fixture.seed}, chunk=${c.x},${c.z}`;
+      assert.deepEqual(column.states,statesFromRuns(c.caves),label+' caves');
+      const caves=column.states.slice();
+      caveChanges+=caves.reduce((sum,v,i)=>sum+(v!==surface[i]),0);
+      carveRavines189(generator.seed,c.x,c.z,column);
+      assert.deepEqual(column.states,statesFromRuns(c.ravines),label+' ravines');
+      ravineChanges+=column.states.reduce((sum,v,i)=>sum+(v!==caves[i]),0);
+    }
+  }
+  assert.ok(caveChanges>10000);assert.ok(ravineChanges>1000);
+});
+
+test('carved terrain is independent of chunk request order', () => {
+  const generator=new DefaultTerrain189('7');
+  const before=generator.carvedColumn(-229,-236);
+  generator.carvedColumn(-2,-177);
+  generator.carvedColumn(262,2);
+  assert.deepEqual(generator.carvedColumn(-229,-236).states,before.states);
+  assert.deepEqual(new DefaultTerrain189('7').carvedColumn(-229,-236).states,before.states);
 });
