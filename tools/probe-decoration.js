@@ -1,6 +1,7 @@
 // Black-box numerical reference probe, using the supplied local 1.8.9 server.
 // Runtime ABI names only; no game source or assets. Derived from the handoff probe.
 var fixtureOutput = String(arguments[0]);
+var featureMode = String(arguments[1] || "double");
 // Probe: re-capture big_oak for seeds 1, 2, 7 with correct world coords
 // This reproduces the exact fixture conditions
 
@@ -79,12 +80,19 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
     specs.push({kind:"double",surface:16,variant:2});
     specs.push({kind:"double",surface:48,variant:2});
     specs.push({kind:"double",surface:960,variant:2});
+    if(featureMode==="patches") {
+      specs=[];var fields=['s','t','u','x'];
+      for(var j=0;j<fields.length;j++)for(var k=0;k<2;k++)
+        specs.push({kind:'decorator-'+fields[j],surface:k===0?32:192,variant:2});
+    }
+    var decorator=Java.type('ady')['e(int)'](1).as;
     for(var si=0;si<specs.length;si++) for(var ji=0;ji<3;ji++) for(var hi=0;hi<2;hi++) {
       var spec=specs[si],seed=[1,7,12345][ji],cx=400+si*12+ji*3,cz=400+hi*4;
       setupGrass(cx,cz,63,spec.surface);
       var ox=cx*16+15,oy=hi===0?64:72,oz=cz*16+15;
-      var gen=new DoublePlant();
-      gen.a(Kind.values()[spec.variant]);
+      var gen;
+      if(spec.kind==='double') {gen=new DoublePlant();gen.a(Kind.values()[spec.variant]);}
+      else {var field=decorator.getClass().getDeclaredField(spec.kind.slice(10));field.setAccessible(true);gen=field.get(decorator);}
       var random=makeRand(seed),ok=gen.b(world,random,bp(ox,oy,oz)),rngAfter=random.nextInt(),blocks=[];
       for(var y=55;y<80;y++)for(var dz=-8;dz<=8;dz++)for(var dx=-8;dx<=8;dx++) {
         var st=getEncoded(ox+dx,y,oz+dz),base=y<63?16:y===63?spec.surface:0;

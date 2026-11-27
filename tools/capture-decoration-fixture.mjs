@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { gzipSync, gunzipSync } from 'node:zlib';
 
-const [jjsArg,jarArg,eulaArg,outputArg]=process.argv.slice(2);
+const [jjsArg,jarArg,eulaArg,outputArg,mode="double"]=process.argv.slice(2);
 if(!outputArg)throw new Error('Usage: node tools/capture-big-oak-fixture.mjs JJS SERVER_JAR ACCEPTED_EULA OUTPUT_GZIP');
 const jar=resolve(jarArg),output=resolve(outputArg);
 const eula=await readFile(resolve(eulaArg),'utf8');
@@ -27,7 +27,7 @@ try {
   const capture=join(work,'result.json.gz');
   child=spawn(resolve(jjsArg),['-J-Xms256M','-J-Xmx768M',
     '-J-Dlog4j.configurationFile='+join(dirname(jar),'log4j2_17-111.xml'),
-    '-J-Dlog4j2.formatMsgNoLookups=true','-J-Djava.class.path='+jar,probe,'--',capture],
+    '-J-Dlog4j2.formatMsgNoLookups=true','-J-Djava.class.path='+jar,probe,'--',capture,mode],
   {cwd:work,stdio:['pipe','pipe','pipe']});
   const exited=once(child,'exit');
   let stopping=false;
@@ -41,7 +41,7 @@ try {
   try { [code]=await exited; } finally { clearTimeout(timer); }
   if(code!==0)throw new Error('Reference server failed: '+log.slice(-2500));
   const fixture=JSON.parse(gunzipSync(await readFile(capture)));
-  if(fixture.cases?.length!==54)throw new Error('Incomplete numerical capture: '+log.slice(-2500));
+  if(fixture.cases?.length!==(mode==="patches"?48:54))throw new Error('Incomplete numerical capture: '+log.slice(-2500));
   const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
   fixture.reference='Local unmodified Minecraft Java 1.8.9, isolated double plant features';
   fixture.serverSha256=hash(await readFile(jar));

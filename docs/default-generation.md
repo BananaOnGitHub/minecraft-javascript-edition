@@ -179,9 +179,22 @@ modifying the server. Regenerate its fixture in a disposable world with:
 
 ```sh
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/decoration.json.gz
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/patches.json.gz patches
 ```
 
-The fixture records the server and probe SHA-256 hashes. Sand, gravel and clay
-deposits, aquatic features, other vegetation, giant mushrooms, and biome-specific
+The fixtures record the server and probe SHA-256 hashes.
+`generateFlowerPatch189(world, random, x, y, z, state, canPlace)` independently
+places a 64-attempt patch, with caller-supplied block state and placement
+predicate for biome/light requirements. `generateCactusPatch189(world, random,
+x, y, z, isSolid)` uses a caller-supplied solid-block predicate. Both match
+24 native fixture cases in total over three seeds, two elevations and two
+surfaces, including failed attempts and caller RNG state. These isolated cases
+do not validate biome flower choice, real light, or obstructed environments.
+The implementations were adapted from Glowstone's MIT `Flower.java` and
+`Cactus.java`, with legacy random consumption and geometry corrected against
+native outputs. Cactus uses ten scatter attempts per invocation. The capture
+also includes mushroom observations but these have not yet been validated.
+
+Sand, gravel and clay deposits, aquatic features, other vegetation, giant mushrooms, and biome-specific
 features remain unimplemented and unvalidated. The population planner's semantics
 differ from legacy population; these independent features are not connected to it.

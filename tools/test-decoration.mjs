@@ -25,3 +25,23 @@ test('double plants match isolated native placements and caller RNG', async () =
   }
   assert.equal(cases.length,54);
 });
+
+test('isolated flower and cactus patches match native placement and RNG', async () => {
+  const {generateFlowerPatch189,generateCactusPatch189}=await import('../client/js/local-world/generation/v1_8_9/decoration.js');
+  const fixture=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-decoration-patches.json.gz',import.meta.url))));
+  const cases=fixture.cases.filter(c=>['decorator-s','decorator-x'].includes(c.kind));
+  for(const c of cases) {
+    const blocks=new Map(),key=(x,y,z)=>`${x},${y},${z}`;
+    const world={get:(x,y,z)=>blocks.get(key(x,y,z))??(y<63?16:y===63?c.surface:0),set:(x,y,z,s)=>blocks.set(key(x,y,z),s)};
+    const r=new JavaRandom(BigInt(c.seed));
+    const ok=c.kind==='decorator-s'?generateFlowerPatch189(world,r,c.ox,c.oy,c.oz,c.blocks[0]?.[3]??(38<<4),(w,x,y,z)=>[2,3,60].includes(w.get(x,y-1,z)>>4)):
+      generateCactusPatch189(world,r,c.ox,c.oy,c.oz,s=>s!==0&&![37,38,81].includes(s>>4));
+    assert.equal(ok,c.ok,`${c.kind} ${c.seed}`);assert.equal(r.nextInt(),c.rngAfter,`${c.kind} RNG ${c.seed} ${c.surface} ${c.oy}`);
+    const actual=[];for(let y=55;y<80;y++)for(let dz=-8;dz<=8;dz++)for(let dx=-8;dx<=8;dx++) {
+      const s=world.get(c.ox+dx,y,c.oz+dz),base=y<63?16:y===63?c.surface:0;
+      if(s!==base)actual.push([dx,y-c.oy,dz,s]);
+    }
+    assert.deepEqual(actual,c.blocks,`${c.kind} seed=${c.seed}, surface=${c.surface}, y=${c.oy}`);
+  }
+  assert.equal(cases.length,24);
+});

@@ -17,3 +17,35 @@ export function generateDoublePlant189(world, random, x, y, z, variant) {
   }
   return placed;
 }
+
+// Single-height flower and mushroom patches. Placement checks that depend on
+// lighting or biome-specific rules are delegated to the caller's world.
+export function generateFlowerPatch189(world, random, x, y, z, state, canPlace) {
+  for(let i=0;i<64;i++) {
+    const bx=x+random.nextInt(8)-random.nextInt(8);
+    const by=y+random.nextInt(4)-random.nextInt(4);
+    const bz=z+random.nextInt(8)-random.nextInt(8);
+    if(by>=0 && by<256 && world.get(bx,by,bz)===0 && canPlace(world,bx,by,bz,state)) world.set(bx,by,bz,state);
+  }
+  return true;
+}
+
+// Occupancy, support and four horizontal neighbors determine cactus survival.
+export function generateCactusPatch189(world,random,x,y,z,isSolid) {
+  for(let i=0;i<10;i++) {
+    const bx=x+random.nextInt(8)-random.nextInt(8);
+    const by=y+random.nextInt(4)-random.nextInt(4);
+    const bz=z+random.nextInt(8)-random.nextInt(8);
+    if(by<0||by>=256||world.get(bx,by,bz)!==0)continue;
+    const height=1+random.nextInt(random.nextInt(3)+1);
+    for(let n=0;n<height;n++) {
+      const yy=by+n;
+      if(yy<0||yy>=256)continue;
+      const below=world.get(bx,yy-1,bz)>>4;
+      if(below!==12&&below!==81)continue;
+      if([[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dz])=>isSolid(world.get(bx+dx,yy,bz+dz))))continue;
+      world.set(bx,yy,bz,81<<4);
+    }
+  }
+  return true;
+}
