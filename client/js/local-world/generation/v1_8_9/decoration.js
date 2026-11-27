@@ -161,3 +161,19 @@ export function generateSedimentDeposit189(world,random,x,y,z,kind) {
   }
   return true;
 }
+
+// Packed-ice patch, using the same cylinder geometry as the independently
+// adapted sediment routine. Source placement is gated on a snow surface.
+export function generateIcePatch189(world,random,x,y,z,maxRadius=4) {
+  if(!Number.isInteger(maxRadius)||maxRadius<3)throw new RangeError('Invalid ice patch radius');
+  while(y>2 && world.get(x,y,z)===0)y--;
+  if((world.get(x,y,z)>>4)!==80)return false;
+  const radius=random.nextInt(maxRadius-2)+2;
+  for(let bx=x-radius;bx<=x+radius;bx++)for(let bz=z-radius;bz<=z+radius;bz++) {
+    if((bx-x)**2+(bz-z)**2>radius*radius)continue;
+    for(let by=y-1;by<=y+1;by++) {
+      if(by>=0&&by<256&&[3,80,79].includes(world.get(bx,by,bz)>>4))world.set(bx,by,bz,174<<4);
+    }
+  }
+  return true;
+}

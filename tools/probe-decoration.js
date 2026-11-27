@@ -94,6 +94,7 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
     if(featureMode==="vines") specs=[{kind:'vines',surface:32,variant:0,wall:true},{kind:'vines',surface:32,variant:0,wall:false}];
     if(featureMode==="mushrooms") {specs=[];for each(var name in ['t','u'])for each(var ground in [1760,50,32])specs.push({kind:'decorator-'+name,surface:ground,variant:0});}
     if(featureMode==="springs") {specs=[];for each(var liquid in ['flowing_water','flowing_lava'])for(var shape=0;shape<4;shape++)specs.push({kind:'spring',surface:32,variant:shape,liquid:liquid});}
+    if(featureMode==="icepatch") specs=[{kind:'icepatch',surface:1280,variant:4},{kind:'icepatch',surface:32,variant:4}];
     var decorator=Java.type('ady')['e(int)'](1).as;
     for(var si=0;si<specs.length;si++) for(var ji=0;ji<3;ji++) for(var hi=0;hi<2;hi++) {
       var spec=specs[si],seed=[1,7,12345][ji],cx=400+si*12+ji*3,cz=400+hi*4;
@@ -136,6 +137,7 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
       else if(spec.kind==='bush')gen=new (Java.type('aoq'))();
       else if(spec.kind==='pumpkin')gen=new (Java.type('apl'))();
       else if(spec.kind==='melon')gen=new (Java.type('aph'))();
+      else if(spec.kind==='icepatch')gen=new (Java.type('apa'))(4);
       else if(spec.kind==='spring')gen=new (Java.type('apr'))(Java.type('afh').b(spec.liquid));
       else if(spec.kind==='vines')gen=new (Java.type('apw'))();
       else if(spec.kind==='grass')gen=new (Java.type('apu'))(Java.type('akc$a').values()[spec.variant]);

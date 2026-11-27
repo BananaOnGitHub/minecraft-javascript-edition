@@ -41,7 +41,7 @@ try {
   try { [code]=await exited; } finally { clearTimeout(timer); }
   if(code!==0)throw new Error('Reference server failed: '+log.slice(-2500));
   const fixture=JSON.parse(gunzipSync(await readFile(capture)));
-  if(fixture.cases?.length!==(mode==="patches"?48:mode==="aquatic"?24:mode==="reeds"?12:mode==="deposits"?18:mode==="grass"?18:mode==="plants"?36:mode==="vines"?12:mode==="mushrooms"?36:mode==="springs"?48:54))throw new Error('Incomplete numerical capture: '+log.slice(-2500));
+  if(fixture.cases?.length!==(mode==="patches"?48:mode==="aquatic"?24:mode==="reeds"?12:mode==="deposits"?18:mode==="grass"?18:mode==="plants"?36:mode==="vines"?12:mode==="mushrooms"?36:mode==="springs"?48:mode==="icepatch"?12:54))throw new Error('Incomplete numerical capture: '+log.slice(-2500));
   const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
   fixture.reference='Local unmodified Minecraft Java 1.8.9, isolated double plant features';
   fixture.serverSha256=hash(await readFile(jar));

@@ -188,6 +188,7 @@ node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/vines.json.gz vines
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/mushrooms.json.gz mushrooms
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/springs.json.gz springs
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/icepatch.json.gz icepatch
 ```
 
 The fixtures record the server and probe SHA-256 hashes.
@@ -261,6 +262,12 @@ case changes 10. A generator that only writes the source would fail these
 fixtures. No spring implementation is claimed until a compatible fluid-update
 contract and the surrounding propagation are validated.
 
-Springs, flowers' biome selection, giant mushrooms, and biome-specific
+`generateIcePatch189` matches 12 packed-ice patch fixtures on snow and grass,
+at two elevations, three seeds and chunk boundaries, including post-call RNG.
+Its cylinder geometry is adapted from MIT Glowstone `BlockPatch.java` and the
+native numerical reference. Mixed ice/dirt substrates and obstructions remain
+unverified.
+
+Springs, flowers' biome selection, giant mushrooms, ice spikes, wells, and other biome-specific
 features remain unimplemented and unvalidated. The population planner's semantics
 differ from legacy population; these independent features are not connected to it.
