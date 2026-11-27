@@ -80,25 +80,32 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
     specs.push({kind:"double",surface:16,variant:2});
     specs.push({kind:"double",surface:48,variant:2});
     specs.push({kind:"double",surface:960,variant:2});
-    if(featureMode==="patches") {
-      specs=[];var fields=['s','t','u','x'];
+    if(featureMode==="patches" || featureMode==="aquatic") {
+      specs=[];var fields=featureMode==='aquatic'?['w','y']:['s','t','u','x'];
       for(var j=0;j<fields.length;j++)for(var k=0;k<2;k++)
-        specs.push({kind:'decorator-'+fields[j],surface:k===0?32:192,variant:2});
+        specs.push({kind:'decorator-'+fields[j],surface:featureMode==='aquatic'?(k===0?144:32):(k===0?32:192),variant:2});
     }
+    if(featureMode==="reeds") specs=[{kind:'decorator-w',surface:32,variant:2,patterned:true},{kind:'decorator-w',surface:192,variant:2,patterned:true}];
     var decorator=Java.type('ady')['e(int)'](1).as;
     for(var si=0;si<specs.length;si++) for(var ji=0;ji<3;ji++) for(var hi=0;hi<2;hi++) {
       var spec=specs[si],seed=[1,7,12345][ji],cx=400+si*12+ji*3,cz=400+hi*4;
       setupGrass(cx,cz,63,spec.surface);
+      if(spec.patterned) for(var ax=-1;ax<=1;ax++)for(var az=-1;az<=1;az++) {
+        var ch=world["a(int,int)"](cx+ax,cz+az),section=ch.h()[3];
+        for(var lz=0;lz<16;lz++)for(var lx=0;lx<16;lx++)
+          if(((cx*16+ax*16+lx)&3)===0) section.g()[(15*256+lz*16+lx)]=java.lang.Character.valueOf('\u0090');
+        section.e();ch.b();
+      }
       var ox=cx*16+15,oy=hi===0?64:72,oz=cz*16+15;
       var gen;
       if(spec.kind==='double') {gen=new DoublePlant();gen.a(Kind.values()[spec.variant]);}
       else {var field=decorator.getClass().getDeclaredField(spec.kind.slice(10));field.setAccessible(true);gen=field.get(decorator);}
       var random=makeRand(seed),ok=gen.b(world,random,bp(ox,oy,oz)),rngAfter=random.nextInt(),blocks=[];
       for(var y=55;y<80;y++)for(var dz=-8;dz<=8;dz++)for(var dx=-8;dx<=8;dx++) {
-        var st=getEncoded(ox+dx,y,oz+dz),base=y<63?16:y===63?spec.surface:0;
+        var st=getEncoded(ox+dx,y,oz+dz),base=y<63?16:y===63?(spec.patterned&&((ox+dx)&3)===0?144:spec.surface):0;
         if(st!==base)blocks.push([dx,y-oy,dz,st]);
       }
-      cases.push({kind:spec.kind,variant:spec.variant,surface:spec.surface,seed:seed,ox:ox,oy:oy,oz:oz,ok:ok,rngAfter:rngAfter,blocks:blocks});
+      cases.push({kind:spec.kind,variant:spec.variant,patterned:!!spec.patterned,surface:spec.surface,seed:seed,ox:ox,oy:oy,oz:oz,ok:ok,rngAfter:rngAfter,blocks:blocks});
     }
 
     var out = new java.util.zip.GZIPOutputStream(new java.io.FileOutputStream(fixtureOutput));

@@ -180,6 +180,8 @@ modifying the server. Regenerate its fixture in a disposable world with:
 ```sh
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/decoration.json.gz
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/patches.json.gz patches
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/aquatic.json.gz aquatic
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/reeds.json.gz reeds
 ```
 
 The fixtures record the server and probe SHA-256 hashes.
@@ -195,6 +197,16 @@ The implementations were adapted from Glowstone's MIT `Flower.java` and
 native outputs. Cactus uses ten scatter attempts per invocation. The capture
 also includes mushroom observations but these have not yet been validated.
 
-Sand, gravel and clay deposits, aquatic features, other vegetation, giant mushrooms, and biome-specific
+`generateWaterLilyPatch189` and `generateSugarCanePatch189` each match 12
+isolated native cases including failed attempts, three seeds, two elevations,
+cross-chunk coordinates, and post-call RNG. Cane fixtures use alternating
+water and grass/sand, and include successful multi-block growth. These functions
+use the same synchronous world accessor as the other isolated generators.
+They do not cover all obstructed, flowing-water, or mixed-terrain conditions.
+Sugar cane was adapted from MIT-licensed Glowstone `SugarCane.java`, with patch
+sampling and random consumption verified against the native probe. Lilies were
+independently implemented against the numerical observations.
+
+Sand, gravel and clay deposits, springs, other vegetation, giant mushrooms, and biome-specific
 features remain unimplemented and unvalidated. The population planner's semantics
 differ from legacy population; these independent features are not connected to it.

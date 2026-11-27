@@ -49,3 +49,32 @@ export function generateCactusPatch189(world,random,x,y,z,isSolid) {
   }
   return true;
 }
+
+export function generateWaterLilyPatch189(world,random,x,y,z) {
+  for(let i=0;i<10;i++) {
+    const bx=x+random.nextInt(8)-random.nextInt(8);
+    const by=y+random.nextInt(4)-random.nextInt(4);
+    const bz=z+random.nextInt(8)-random.nextInt(8);
+    if(by<1||by>=256||world.get(bx,by,bz)!==0)continue;
+    if(world.get(bx,by-1,bz)===(9<<4)) world.set(bx,by,bz,111<<4);
+  }
+  return true;
+}
+
+export function generateSugarCanePatch189(world,random,x,y,z) {
+  for(let i=0;i<20;i++) {
+    const bx=x+random.nextInt(4)-random.nextInt(4);
+    const bz=z+random.nextInt(4)-random.nextInt(4);
+    if(y<1||y>=256||world.get(bx,y,bz)!==0)continue;
+    if(![[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dz])=>[8,9].includes(world.get(bx+dx,y-1,bz+dz)>>4)))continue;
+    const height=2+random.nextInt(random.nextInt(3)+1);
+    for(let dy=0;dy<height;dy++) {
+      if(y+dy>=256)continue;
+      const below=world.get(bx,y+dy-1,bz)>>4;
+      if(below===83||([2,3,12].includes(below)&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dz])=>[8,9].includes(world.get(bx+dx,y+dy-1,bz+dz)>>4)))) {
+        world.set(bx,y+dy,bz,83<<4);
+      }
+    }
+  }
+  return true;
+}
