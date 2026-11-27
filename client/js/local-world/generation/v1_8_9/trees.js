@@ -147,10 +147,9 @@ function isSpaceClear2x2(world, x, y, z, height) {
 
 function ensure2x2Soil(world, x, y, z) {
   const b00 = world.get(x, y - 1, z) >> 4;
-  const b10 = world.get(x + 1, y - 1, z) >> 4;
-  const b01 = world.get(x, y - 1, z + 1) >> 4;
-  const b11 = world.get(x + 1, y - 1, z + 1) >> 4;
-  if (!isGrassOrDirt(b00) || !isGrassOrDirt(b10) || !isGrassOrDirt(b01) || !isGrassOrDirt(b11) || y < 2) {
+  // The anchor soil gates the attempt; the other three support blocks are
+  // converted even on a slope. Requiring four pre-existing soils rejects it.
+  if (!isGrassOrDirt(b00) || y < 2) {
     return false;
   }
   setDirtAt(world, x, y - 1, z);

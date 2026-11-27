@@ -167,8 +167,12 @@ synchronous world. It is independent of the incompatible population planner.
 All **118/118 complete controlled invocations**, two seeds over all **59
 registered Overworld biomes**, match exact changed states, both RNG streams,
 and numerical feature-boundary observations. The capture includes mutations,
-negative coordinates, and writes outside the source chunk. Natural-terrain and
-targeted successful pre-decoration cases are the next validation milestone.
+negative coordinates, and writes outside the source chunk. **22/22 additional
+invocations** cover nine unpopulated natural inputs (terrain seed 7), and thirteen
+targeted planes with feature seed 3, including successful special features and
+the tulip-noise branch. Total complete-call agreement is **140/140**, matching
+**502,327 changed states** and **1,526,416 feature RNG calls** exactly. Both RNG
+streams' final values and available tree/mushroom boundaries also match.
 
 The host supplies current height/top-solid-or-liquid queries, placement/light
 predicates, opacity/full-cube/material rules, and a separate world RNG. The test
@@ -194,8 +198,17 @@ The extended existing capture runner accepts mode `biomes`; its auxiliary
 numerical world-service observations. Delegating observers were checked against
 the unwrapped capture: all 118 state changes and RNG traces remain identical.
 
-Regression checkpoint: `npm run test:default-generation` includes the new complete
-invocation suite alongside every original generation and decoration fixture.
+The final capture harness reproduces all 118 original state/RNG outputs after
+preventing incidental population while arenas are loaded. Natural inputs use
+the native unpopulated provider, not the complete population routine. Additional
+fixtures verify clay leaves sand unchanged and giant trees can establish their
+other three support blocks on a slope after validating the anchor soil.
+
+Regression checkpoint: `npm run test:default-generation` **31/31** and
+`npm run test:local-worlds` **58/58**, alongside every original fixture. See
+[biome-decoration.md](biome-decoration.md) for sequence, world-service contract,
+provenance, reproduction, and capture limits. Complete population, structures,
+runtime lighting/physics and wider terrain/material coverage remain separate.
 
 `generateDoublePlant189(world, random, x, y, z, variant)` in `decoration.js`
 generates one double-plant patch using synchronous `world.get` / `world.set`
@@ -327,8 +340,8 @@ required for arbitrary water-displaced block drops and nonfluid neighbor
 physics; unsupported default displacement throws rather than approximates.
 See [fluid-updates.md](fluid-updates.md) for the boundary, interface, provenance,
 fixture limits, and actionable runtime backlog. Both regression commands pass:
-`npm run test:default-generation` **29/29** and `npm run test:local-worlds`
-**56/56**. Existing generator IDs and persisted worlds are unchanged.
+`npm run test:default-generation` **31/31** and `npm run test:local-worlds`
+**58/58**. Existing generator IDs and persisted worlds are unchanged.
 
 `generateIcePatch189` matches 12 packed-ice patch fixtures on snow and grass,
 at two elevations, three seeds and chunk boundaries, including post-call RNG.
@@ -360,6 +373,7 @@ overlapping ellipsoids derive from MIT Glowstone `StoneBoulder.java`, with
 reference-corrected offsets. Mixed soils, non-solid obstructions, and replaceable
 plants need further coverage.
 
-Flowers' biome selection and other biome-specific
-features remain unimplemented and unvalidated. The population planner's semantics
-differ from legacy population; these independent features are not connected to it.
+Biome flower selection and feature sequencing are implemented in the separately
+validated orchestrator above. Complete legacy population and structures remain
+unimplemented. The population planner's semantics differ from legacy population;
+the decorator is not connected to it.

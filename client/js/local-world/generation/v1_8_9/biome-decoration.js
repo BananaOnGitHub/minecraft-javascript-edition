@@ -103,7 +103,7 @@ export class BiomeDecoration189 {
     return ok;
   }
   decorate(world,random,biomeId,baseX,baseZ,{fluids=new FluidUpdates189(world)}={}) {
-    if(![world.height,world.topSolidOrLiquid,world.canPlace,world.isOpaque,world.canAttachVine].every(v=>typeof v==='function'))throw new TypeError('Decoration world requires height, topSolidOrLiquid, canPlace, isOpaque and canAttachVine');
+    if(![world.height,world.topSolidOrLiquid,world.canPlace,world.isOpaque,world.isFullCube,world.canAttachVine].every(v=>typeof v==='function'))throw new TypeError('Decoration world requires height, topSolidOrLiquid, canPlace, isOpaque, isFullCube and canAttachVine');
     const id=DELEGATE.get(biomeId)??biomeId,c=decorationCounts189(id),r=random;
     const prePost=![130,133,134,149,151,155,156,158].includes(biomeId);
     const at=(kind,x,y,z,fn,detail)=>this.feature(kind,r,x,y,z,fn,detail);

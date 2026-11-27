@@ -64,7 +64,8 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
     function setupGrass(cx0, cz0, surfaceY, surfaceCode) {
       for (var cx = cx0 - 2; cx <= cx0 + 2; cx++)
         for (var cz = cz0 - 2; cz <= cz0 + 2; cz++)
-          world["a(int,int)"](cx | 0, cz | 0);
+          {var loaded=world["a(int,int)"](cx | 0, cz | 0);
+          if(featureMode.indexOf('biomes')===0){var populated=Java.type('amy').class.getDeclaredField('n');populated.setAccessible(true);populated.setBoolean(loaded,true);}}
       var stoneChar = java.lang.Character.valueOf('\u0010');
       var grassChar = java.lang.Character.valueOf(String.fromCharCode(surfaceCode));
       for (var cx = cx0 - 1; cx <= cx0 + 1; cx++) {
@@ -89,7 +90,7 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
       }
     }
 
-    if(featureMode==='biomes') {
+    if(featureMode.indexOf('biomes')===0) {
       load(auxiliaryProbe);
       var result=captureBiomeDecoration(world,setupGrass,getEncoded,rawSet,makeRand);
       var stream=new java.util.zip.GZIPOutputStream(new java.io.FileOutputStream(fixtureOutput));

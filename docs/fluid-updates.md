@@ -3,6 +3,8 @@
 `client/js/local-world/generation/v1_8_9/fluids.js` implements independently
 authored, synchronous fluid primitives. It is not attached to the playable
 generator, population planner, or integrated server tick loop.
+The independently callable biome orchestrator now reuses this engine for its
+spring stage; see [biome-decoration.md](biome-decoration.md).
 
 ## Placement and update boundary
 
@@ -108,5 +110,6 @@ lava ignition, Nether behavior, world-height edges, and unloaded-world native
 fixtures remain future work. No complete biome decorator or population
 persistence changes are included.
 
-Verified regression commands: `npm run test:default-generation` (29 tests) and
-`npm run test:local-worlds` (56 tests), all passing.
+Current regression commands, including biome orchestration:
+`npm run test:default-generation` (31 tests) and `npm run test:local-worlds`
+(58 tests), all passing.
