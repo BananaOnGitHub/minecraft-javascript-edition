@@ -184,6 +184,7 @@ node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/reeds.json.gz reeds
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/deposits.json.gz deposits
 node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/grass.json.gz grass
+node tools/capture-decoration-fixture.mjs /path/to/jjs /path/to/server.jar /path/to/accepted/eula.txt /tmp/plants.json.gz plants
 ```
 
 The fixtures record the server and probe SHA-256 hashes.
@@ -224,7 +225,16 @@ leaf-canopy and obstruction cases need further coverage. The algorithm was
 adapted from the MIT Glowstone `TallGrass.java` and corrected with reference
 fixtures for legacy placement order and RNG consumption.
 
-Springs, flowers' biome selection, dead bushes, vines, mushrooms, pumpkins,
-melons, giant mushrooms, and biome-specific
+`generateDeadBushPatch189` and `generateFruitPatch189` (pumpkin/melon) match
+36 native cases across three seeds, grass and sand, two starting elevations,
+chunk boundaries, block metadata, and post-call RNG. The native pumpkin
+facing encoding differs from the raw random choice. These isolated functions
+were adapted from MIT Glowstone `DeadBushDecorator`, `PumpkinDecorator`, and
+`MelonDecorator`, with their individual feature behavior checked against the
+native server. Other soils, light, and obstructions require additional checks.
+Runtime feature class names for probes were identified using the 1.8.9 class
+mapping in [Zffu/mappings](https://github.com/Zffu/mappings).
+
+Springs, flowers' biome selection, vines, mushrooms, giant mushrooms, and biome-specific
 features remain unimplemented and unvalidated. The population planner's semantics
 differ from legacy population; these independent features are not connected to it.

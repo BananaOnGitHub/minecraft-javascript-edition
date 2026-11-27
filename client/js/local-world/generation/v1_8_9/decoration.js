@@ -44,6 +44,33 @@ export function generateTallGrassPatch189(world,random,x,y,z,variant) {
   return true;
 }
 
+// Scatter routines derived from Glowstone's MIT decorators, independently
+// checked against isolated native generator outputs.
+export function generateDeadBushPatch189(world,random,x,y,z) {
+  while(y>0 && [0,18,161].includes(world.get(x,y,z)>>4))y--;
+  for(let i=0;i<4;i++) {
+    const bx=x+random.nextInt(8)-random.nextInt(8);
+    const by=y+random.nextInt(4)-random.nextInt(4);
+    const bz=z+random.nextInt(8)-random.nextInt(8);
+    if(by<1||by>=256||world.get(bx,by,bz)!==0)continue;
+    if([3,12,159,172].includes(world.get(bx,by-1,bz)>>4))world.set(bx,by,bz,32<<4);
+  }
+  return true;
+}
+
+export function generateFruitPatch189(world,random,x,y,z,kind) {
+  if(kind!=='pumpkin'&&kind!=='melon')throw new RangeError('Unknown fruit feature');
+  for(let i=0;i<64;i++) {
+    const bx=x+random.nextInt(8)-random.nextInt(8);
+    const by=y+random.nextInt(4)-random.nextInt(4);
+    const bz=z+random.nextInt(8)-random.nextInt(8);
+    if(by<1||by>=256||world.get(bx,by,bz)!==0||(world.get(bx,by-1,bz)>>4)!==2)continue;
+    const metadata=kind==='pumpkin'?(random.nextInt(4)+2)%4:0;
+    world.set(bx,by,bz,((kind==='pumpkin'?86:103)<<4)|metadata);
+  }
+  return true;
+}
+
 // Occupancy, support and four horizontal neighbors determine cactus survival.
 export function generateCactusPatch189(world,random,x,y,z,isSolid) {
   for(let i=0;i<10;i++) {

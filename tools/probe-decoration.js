@@ -88,6 +88,9 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
     if(featureMode==="reeds") specs=[{kind:'decorator-w',surface:32,variant:2,patterned:true},{kind:'decorator-w',surface:192,variant:2,patterned:true}];
     if(featureMode==="deposits") specs=['e','f','g'].map(function(n){return {kind:'decorator-'+n,surface:144,variant:2,deposit:true};});
     if(featureMode==="grass") specs=[{kind:'grass',surface:32,variant:1},{kind:'grass',surface:32,variant:2},{kind:'grass',surface:192,variant:1}];
+    if(featureMode==="plants") {
+      specs=[];for each(var name in ['bush','pumpkin','melon'])for each(var ground in [32,192])specs.push({kind:name,surface:ground,variant:0});
+    }
     var decorator=Java.type('ady')['e(int)'](1).as;
     for(var si=0;si<specs.length;si++) for(var ji=0;ji<3;ji++) for(var hi=0;hi<2;hi++) {
       var spec=specs[si],seed=[1,7,12345][ji],cx=400+si*12+ji*3,cz=400+hi*4;
@@ -106,6 +109,9 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
       var ox=cx*16+15,oy=spec.deposit?(hi===0?63:72):(hi===0?64:72),oz=cz*16+15;
       var gen;
       if(spec.kind==='double') {gen=new DoublePlant();gen.a(Kind.values()[spec.variant]);}
+      else if(spec.kind==='bush')gen=new (Java.type('aoq'))();
+      else if(spec.kind==='pumpkin')gen=new (Java.type('apl'))();
+      else if(spec.kind==='melon')gen=new (Java.type('aph'))();
       else if(spec.kind==='grass')gen=new (Java.type('apu'))(Java.type('akc$a').values()[spec.variant]);
       else {var field=decorator.getClass().getDeclaredField(spec.kind.slice(10));field.setAccessible(true);gen=field.get(decorator);}
       var random=makeRand(seed),ok=gen.b(world,random,bp(ox,oy,oz)),rngAfter=random.nextInt(),blocks=[];
