@@ -1,100 +1,97 @@
-# MinecraftJS local worlds
+# Local world creation and compatibility
 
-This work adds a browser-hosted building sandbox to the MinecraftJS 1.8.9 client. New worlds default to procedurally generated natural landscapes. The original **Terrace Yard** test site is still available as a terrain preset. Each named world stores its seed, generation options, block changes, and last saved player position.
+Run the project with npm start and open http://localhost:3000. New source changes are served directly. Saves belong to that exact origin. Use the same hostname and port to reopen existing browser worlds.
 
-## Start a world
+## Implemented flow
 
-Open **Singleplayer → Create World**, enter a name and an optional seed, select a terrain preset, and choose **Create World**. Use the existing movement, jump, and block interaction controls. **Esc → Save and Quit** waits for the worker’s final checkpoint before returning to the menu. Reopen the same named world under **Singleplayer**. Names are unique within the browser origin. Leaving the seed blank chooses a random signed 64-bit number. The Random button also generates a seed that you can edit or record. Select an existing world in the picker to view and copy its seed.
+The creation screen has a name field, a save-directory preview, a mode selector, and a second page for seed and world options. Create and Cancel are accessible on both pages. Names, seeds, settings, and explicit command-permission overrides survive page switches. Duplicate display names receive separate UUIDs and portable directory names. A concurrent transaction resolves directory collisions.
 
-Run the usual MinecraftJS development server from the client checkout. The proxy serves the application, and its existing asset loader locates your local game installation or prebuilt `client/assets/` folder.
+Modes cycle through Survival, Hardcore, and Creative. Creative enables commands by default until the user explicitly changes that setting. Hardcore forces commands and starter chest off and selects hard difficulty. The server applies initial creative/survival capability flags and restricts creative slot packets to Creative mode. Full survival simulation and permanent-death handling remain pending and are identified in the UI.
 
-    npm ci
-    npm start
+Only /seed and /gamemode survival|creative are implemented. Command permission is enforced by the worker. Structure and starter-chest settings are stored, and their controls show that generation is pending. The current terrain selectors describe the project's original generators. The creation layout and terrain algorithms have their own design.
 
-Open http://localhost:3000 and select Singleplayer. Local worlds run in a dedicated browser worker using IndexedDB. Saves belong to the exact browser origin, including its hostname and port. If you already created a world at `http://127.0.0.1:8000`, stop the previous static server, run `PORT=8000 npm start`, and reopen that same URL.
+## Seed interpretation
 
-The existing static and packed HTML build commands also support local worlds. The npm development server serves source files directly, so a distribution rebuild is unnecessary for source changes.
+New version-three worlds use these rules:
 
-Run the integrated-server regression suite with `npm run test:local-worlds`.
+- Empty input or parsed numerical zero selects a random signed 64-bit seed.
+- A valid nonzero signed 64-bit decimal value is used directly.
+- Remaining input uses Java's signed 32-bit UTF-16 String.hashCode result.
+- Decimal parsing preserves Java whitespace behavior. Input containing spaces is hashed when parsing fails.
+- Resolved seeds are saved as decimal strings and handled with BigInt. Reopening never resolves them again.
 
-## World generation
+local-world/java-random.js extends the existing client LCG with validated bounds, long, boolean, byte, and Gaussian methods. tools/JavaRandomFixture.java creates reference output using public JDK APIs. The committed fixture covers positive, negative, and extreme long seeds and mixed method-call sequences. It also covers text hashes, surrogate pairs, isolated surrogates, Unicode decimal digits, overflow and whitespace.
 
-| Terrain | Description |
+All 294 exact scalar comparisons against the JDK fixture passed. All 35 Gaussian samples passed a 1e-14 absolute tolerance. JavaScript Math log/sqrt can differ from Java StrictMath in the final bits.
+
+The public behavior used for these routines is documented by Oracle. [Random](https://docs.oracle.com/javase/8/docs/api/java/util/Random.html), [String](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html#hashCode--), [Long](https://docs.oracle.com/javase/8/docs/api/java/lang/Long.html#parseLong-java.lang.String-)
+
+## Configurable flat worlds
+
+Selecting Flat exposes a layer editor with thickness, block ID, block metadata and biome ID. Layers are ordered from the bottom up in storage and displayed from the top down in the editor. The editor supports adding, removing and selecting layers, four project presets, Done and Cancel. It validates the 256-block height limit.
+
+The server fills exact block states from the saved layers, streams the resulting columns, and uses the resulting height for spawn. The original presets are Garden foundation, Stone workshop, Sandstone foundation and Shallow reservoir. Partial-block collision shapes, fluid updates and population for arbitrary layer choices need further work.
+
+Old version-two flat worlds retain their original generator. The new configurable flat generator has its own identifier.
+
+## Save format and recovery
+
+| Record | Behavior |
 | --- | --- |
-| Natural | Rolling elevations, climate-dependent surface materials, forests, and lowland water. |
-| Flat | A level grass surface over soil and stone. Optional features default to off. |
-| Highlands | Greater relief, deeper valleys, rocky elevations, and snowy high ground. |
-| Broad regions | Larger landforms and climate regions. |
-| Custom | Adjustable base elevation, relief, region size, and water level. |
-| Terrace Yard | The original bounded test site. |
+| Version 1 | Original bounded Terrace Yard, its old seed hash, and original edit encoding. |
+| Version 2 | Original noise landscape and seed interpretation, with its original settings and sparse edits. |
+| Version 3 | UUID, display name, directory name, resolved decimal seed, creation options, generator ID/version/configuration, spawn, position, hotbar and sparse edits. |
 
-**World options** controls trees, surface water, subterranean caverns and ore deposits, scattered stone landmarks, and whether the creative hotbar starts with materials. Each preset supplies compatible defaults. Generated water is static, and the hotbar is initialized on each login. Creative building is the supported game mode.
+IndexedDB schema version 2 adds a separate world-chunks object store while retaining the checkpoints store. Each generated base column commits before it is sent to the client. Columns are keyed by world UUID and coordinates. First-write transactions keep one immutable base column when two tabs generate the same coordinate concurrently. Generator identifiers are checked before loading a save or its stored chunks. An unavailable generator version produces an error and leaves the data available.
 
-The original landscape generator combines smooth seeded noise fields in world coordinates and places features at deterministic global-grid anchors. Signed 64-bit numeric seeds and arbitrary text seeds are supported. Text is hashed into 64 bits; decimal values outside the signed range are treated as text. A seed and identical settings regenerate the same base terrain regardless of chunk order. The algorithm has its own terrain and feature rules.
+Player modifications remain separate from base columns. Checkpoint revisions prevent stale writes. The worker waits for active streaming before its final save and close. The regression suite covers database upgrades, duplicate names, write conflicts, generator mismatches and stored-column reuse.
 
-Natural landscape chunks are generated lazily across the supported horizontal coordinate range and Y=0–255. A 96-column LRU cache bounds retained base terrain. Chunk packets include the sections up to the highest existing block and their biome and skylight data. Spawn selection searches for dry land with headroom. Custom water-dominated worlds can spawn above the water surface.
+The column cache retains at most 384 base columns, about 48.1 MiB of block and biome arrays. The original landscape generator also retains a bounded 96-column working cache, potentially sharing some arrays with the persistence cache. game.conn.ws.metrics includes cached base bytes and chunk/tick timings. Browser frame-time impact while exploring new terrain still requires profiling.
 
-Save version 2 records the reproducible seed string and generation settings together with per-chunk sparse edits. Version 1 records continue to use the original Terrace Yard generator, coordinate limits, and edit format. Their picker entries show the stored seed hash because the original seed string was not recorded.
+## Reference comparisons
 
-## Integration
+Run the comparison tool against an existing local world and its resolved seed:
 
-| Client subsystem | Integration |
+    node tools/compare-world-generation.mjs WORLD_DIRECTORY NONZERO_SEED CHUNK_X CHUNK_Z REPORT_JSON
+
+The tool reads Anvil region data without loading game application classes. It compares biome IDs, block IDs, metadata, full block states, calculated top-non-air heights, the bottom-five-layer bedrock mask, and ore/vegetation positions. Population flags identify the reference stage. Density samples are absent from region data. Structure comparisons need dedicated fixtures.
+
+For the checked-in comparison report, the locally provisioned vanilla 1.8.9 server generated isolated temporary worlds for seeds 7 and -7. Each world was saved, its spawn moved to the origin, and the server restarted. Six populated chunks per seed were sampled at (0,0), (-1,0), (0,-1), (-1,-1), (1,0), and (0,1). The report records the server JAR SHA-256.
+
+| Measurement | Match rate |
 | --- | --- |
-| Connection and protocol | A MessageChannel exposes the existing socket shape. The worker passes protocol 47 play frames without TCP framing, authentication, or compression. The existing decoder dispatches packets to Game. Larger clientbound packets transfer buffer ownership. |
-| World state and interactions | The client keeps its World, Chunk, meshing, and predictive physics. The worker generates columns, checks reported positions for collisions against its own terrain, and sends the final state of an edited block. |
-| Inventory and entities | The worker supplies a hotbar of full-cube building materials, validates slots, and uses the existing player state. Other entity behavior and wider inventory simulation are outside this sandbox build. |
-| Menus | The title screen opens a world picker and creation form. Connecting, loading, in-world and disconnect screens follow the normal client lifecycle. |
-| Assets, graphics, and audio | The patch uses upstream resource provisioning and the existing graphics and audio paths. The packed and static builds bundle the worker alongside the existing mesh worker. |
-| Settings and storage | Graphics, controls, and audio use existing settings. The worker supports a chunk radius of up to eight for landscapes and four for terraces. Origin-scoped IndexedDB stores snapshots using optimistic revisions. Each accepted edit is committed before confirmation. |
+| Biome IDs | 0% |
+| Calculated top-non-air heights | 0.0651% |
+| Full block states | 86.3305% |
+| Block IDs | 88.9319% |
+| Metadata | 96.9270% |
+| Bottom-five-layer bedrock mask | 60.3776% |
+| Ore locations and states, measured over either column's ore cells | 0.1410% |
+| Vegetation locations and states, measured over either column's vegetation cells | 0% |
 
-The protocol adapter lives in local-world/protocol.js. The terrain model and checkpoint store can be exercised independently. Session start/stop and ordered commands reuse the browser-session foundation. Worker generation and streaming metrics are available at game.conn.ws.metrics, and Connection exposes packet and byte counters. Measure rendering through the upstream profiler while separately recording worker peak tick time, chunk generation time, and resident chunks.
+These results establish a discrepancy baseline for the original landscape generator. Shared air and stone contribute heavily to whole-column agreement. Base-terrain parity has not been established independently of population. Native biome layering, density noise, surface rules, bedrock randomness, caves, ores, decoration and structures remain incomplete. The existing generic landscape must retain its original generator identifier.
 
-## Server assessment
+The Anvil reader is tested with synthetic region data, including negative coordinates, metadata, population flags, missing chunks and truncated files. The measured reference results are in tools/fixtures/world-generation-comparison.json.
 
-| Candidate | Findings | Decision |
-| --- | --- | --- |
-| [Flying Squid](https://github.com/PrismarineJS/flying-squid) | MIT. Its maintained server documents support for the 1.8 family, movement, digging, placement, generation and Anvil loading. The package entry point and dependencies use Node-oriented protocol, storage and CLI modules. | Useful reference for a pluggable server interface. Browser-worker startup and exact 1.8.9 behavior remain unverified. |
-| [Space Squid](https://github.com/zardoy/space-squid) and [Minecraft Web Client](https://github.com/zardoy/minecraft-web-client/blob/next/README.MD) | Space Squid is an MIT TypeScript fork used for the web client’s offline mode. Its server dependencies still include filesystem, compression, and CLI packages. That web client provides a browser integration and Anvil storage. Its documentation describes limited survival features. | The existing browser port is evidence for feasibility. Integrating it here would require verifying the protocol 47 plugin and dependency paths. |
-| [PrismarineJS modules](https://github.com/PrismarineJS) | Versioned registries, NBT, chunk and world modules are independent candidates for later interoperability work. | The initial sandbox reuses MinecraftJS’s codec and avoids an additional registry or runtime dependency. A future use of any module should pin and review its specific version and license. |
+## Dependencies and provenance
 
-No external server package was benchmarked in this environment. The server projects’ entity AI, inventory, redstone, and memory behavior were not verified. The sandbox code adds no runtime dependencies and uses the repository’s GPL-3.0 license. Keep the upstream license, contributor history, and attribution when applying the patch. Provision upstream assets only in local builds.
+The integrated server adds no production dependency. fake-indexeddb is a development dependency for repeatable storage-upgrade and transaction tests.
 
-## Base and validation
+The public Flying Squid package and Prismarine world/Anvil modules were inspected. Their MIT packages expose protocol, simulation and storage facilities. They do not establish accurate terrain parity for this implementation. The implementation reuses the project's codec, typed chunks, Java LCG, widgets and worker transport. [Flying Squid package](https://github.com/PrismarineJS/flying-squid/blob/master/package.json), [Prismarine World](https://github.com/PrismarineJS/prismarine-world/blob/master/package.json), [Anvil provider](https://github.com/PrismarineJS/prismarine-provider-anvil/blob/master/package.json)
 
-The initial patch was based on commit
-[e6d2c47da32e67b8a30082e469430f3a12ddabfc](https://github.com/Reb0rnEnder/MinecraftJS/commit/e6d2c47da32e67b8a30082e469430f3a12ddabfc)
-on branch 1.8.9. The local test branch now includes the fork's November 26 update through [4ee78a8](https://github.com/Reb0rnEnder/MinecraftJS/commit/4ee78a870cee3c71bcebd2350b1b433a0707e573), with full Git history fetched. The name-tag and tab-list fixes merged without conflicts. For future upstream updates, fetch Reb0rnEnder/MinecraftJS as the upstream remote and merge upstream/1.8.9 on a development branch before running the regression suite.
+The changes remain on local-worlds-test with the existing fork history and upstream attribution. Local game assets and reference world data remain outside commits. Only numeric comparison results and independently authored test code are committed.
 
-### Verified results
+## Validation and backlog
 
-The source inputs matched the upstream Git blob hashes.
+The selected validation run passed 80 tests. Run npm run test:local-worlds for the 21 local-world and compatibility tests. It covers seed interpretation and RNG output, creation navigation and mode defaults, layers and metadata, legacy worlds, worker streaming, command permissions and persistence. Existing login, cancellation, client, name-tag and tab-list regressions are also run.
 
-- Upstream and modified packed builds and the modified static build completed using cached npm dependencies and the local 1.8.9 asset installation.
-- Existing menu layout, login transport, and connection cancellation regression files passed before and after the patch.
-- After the November 26 merge, `npm run test:local-worlds` and nine upstream regression files passed (62 tests total). An `npm start` smoke test returned HTTP 200 for the client, local-world worker modules, assets, and the updated tab-list module.
-- The landscape update passed 70 tests, including 11 local-world tests for creation options, signed seeds, generation order, surface features, custom terrain, remote edits, version-one saves, and the worker's streamed natural and flat worlds. The npm source server served the new modules, and a temporary code-only packed build succeeded.
-- A Node benchmark generated and encoded 81 natural columns for seed `7` in 36.8, 21.2, and 14.3 ms across three passes. Each pass emitted 5,674,431 bytes. These are local generation and serialization timings; browser rendering and worker tick pacing are separate measurements.
-- The integration test drove the real Connection decoder from a native Node worker over MessageChannel. It verified login ordering, a spawn column decoded by the upstream Chunk class, accepted movement, collision correction, chunk streaming and unload, authoritative material selection, placing and breaking blocks, saving position, reopening block edits, and duplicate names.
-- The integration test uses a temporary file checkpoint fixture. Real Chromium IndexedDB transactions, pointer lock, framebuffer output, and connecting to the vanilla reference server still need live verification.
-- In a two-pass Node spot check, generation and encoding for 256 columns took about 85 ms on the first pass and 69 ms on the second. The sample emitted 12,652,288 bytes in total. The timings exclude renderer, MessageChannel, storage, and browser overhead.
+The browser check used the normal npm source server. It created a Creative world named Compatibility check with seed -7, changed the top layer to brick, entered the world, checked /seed, saved, and reopened the same world. Its saved entry and reopened terrain retained the configuration.
 
-    node --test tools/test-local-world.mjs tools/test-connection-cancellation.mjs tools/test-login-transport.mjs tools/test-menu-layout-regressions.mjs
+Remaining work is explicit:
 
-The original development session had restrictions on GitHub access and loopback sockets. Both operations worked for the November 26 update. The user's initial screenshot verified in-world rendering in the static build. A full browser save/reopen test and graphics-backend comparison remain outstanding. Use the same origin for save/reopen and verify both graphics backends on the intended hardware.
-
-## Scope and next verification
-
-| Feature | Current verification |
-| --- | --- |
-| Named world creation and selection | Menu routing, worker startup and duplicate names covered by tests. Browser storage and menu interaction pending. |
-| Seeded terrain | Six terrain presets, numeric and text seeds, cross-chunk determinism, custom parameters, feature switches, and sparse edits covered by tests. |
-| Spawn, movement, and collision | Protocol spawn, accepted movement and correction covered by tests. Keyboard movement and jump pending in a headed browser. |
-| Chunk streaming and unloading | Verified through the existing codec and Chunk loader. |
-| Block placement and breaking | Authoritative edits and persisted states verified with a checkpoint fixture. Pointer-lock interaction pending. |
-| Save and reopen | Node worker fixture covers block edits and player position. Browser IndexedDB transactions and concurrent-tab behavior pending. |
-| Asset provisioning and rendering | Packed and static builds verified. The npm server serves the client and worker files, and the user observed initial in-world rendering. Separate WebGL 2 and WebGPU validation pending. |
-| Multiplayer | Login, connection cancellation and menu regressions pass. A live join to the reference server remains pending. |
-
-Open a named world, walk and jump, cross a chunk boundary, build and remove a block, save and return, then reopen and verify the changes. Run the existing multiplayer path against the local reference server afterward.
-
-Current storage keeps a full snapshot of sparse edits per world. Highly edited worlds will benefit from chunk-level IndexedDB writes and recovery tests. The sandbox uses static vertical skylight and a building palette. Legacy-world import and export, time and weather, crafting and survival, mobs, fluid simulation, redstone, and additional dimensions are outside this integration.
+1. Independently validate base and populated terrain stages with broader fixtures. Accurate native terrain parity remains outstanding.
+2. Provide the requested native world-type behavior and complete configuration support. The current selectors retain the original project presets.
+3. Complete structure and starter-chest generation before removing their pending indicators.
+4. Complete survival inventory, drops, damage, crafting, hunger and hardcore death semantics.
+5. Profile generation I/O, cache retention and frame times during sustained browser exploration.
+6. Add browser crash-recovery, quota-exhaustion and cross-tab tests beyond the in-memory IndexedDB regression tests.

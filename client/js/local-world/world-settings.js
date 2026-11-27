@@ -74,5 +74,9 @@ export function describeWorld(state) {
   if (state.version === 1) {
     return { worldType: 'terraces', seed: String(state.seed), legacySeed: true };
   }
+  if (state.version === 3) {
+    return { worldType: worldSettings(state.settings).worldType, seed: state.seed, legacySeed: false,
+      displayName: state.displayName, directory: state.directory, generator: state.generator.id };
+  }
   return { worldType: worldSettings(state.settings).worldType, seed: state.seed, legacySeed: false };
 }

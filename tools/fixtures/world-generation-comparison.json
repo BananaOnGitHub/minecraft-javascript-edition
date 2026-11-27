@@ -1,0 +1,653 @@
+{
+  "reference": {
+    "version": "1.8.9",
+    "serverSha256": "c18e4245073aaff580eb7359902f0251436568b1647a9e443a924cdb73fa8312",
+    "method": "Existing locally provisioned vanilla server generated isolated temporary worlds, structures enabled. Spawn was then moved to the origin and the worlds restarted before reading saved region data.",
+    "seedInputs": [
+      "7",
+      "-7"
+    ]
+  },
+  "candidate": {
+    "id": "landscape-v1",
+    "version": 1
+  },
+  "aggregate": {
+    "biomes": {
+      "equal": 0,
+      "total": 3072,
+      "fraction": 0.0
+    },
+    "topNonAir": {
+      "equal": 2,
+      "total": 3072,
+      "fraction": 0.0006510416666666666
+    },
+    "blockStates": {
+      "equal": 678931,
+      "total": 786432,
+      "fraction": 0.863305409749349
+    },
+    "blockIds": {
+      "equal": 699389,
+      "total": 786432,
+      "fraction": 0.889319101969401
+    },
+    "metadata": {
+      "equal": 762265,
+      "total": 786432,
+      "fraction": 0.9692700703938802
+    },
+    "bottomBedrockMask": {
+      "equal": 9274,
+      "total": 15360,
+      "fraction": 0.6037760416666667
+    },
+    "ores": {
+      "equal": 6,
+      "total": 4254,
+      "fraction": 0.0014104372355430183
+    },
+    "vegetation": {
+      "equal": 0,
+      "total": 350,
+      "fraction": 0.0
+    }
+  },
+  "columns": [
+    {
+      "seed": "7",
+      "x": 0,
+      "z": 0,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "blockStates": {
+        "equal": 54455,
+        "total": 65536,
+        "fraction": 0.8309173583984375
+      },
+      "blockIds": {
+        "equal": 55722,
+        "total": 65536,
+        "fraction": 0.850250244140625
+      },
+      "metadata": {
+        "equal": 63814,
+        "total": 65536,
+        "fraction": 0.973724365234375
+      },
+      "bottomBedrockMask": {
+        "equal": 774,
+        "total": 1280,
+        "fraction": 0.6046875
+      },
+      "ores": {
+        "equal": 0,
+        "total": 280,
+        "fraction": 0
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 81,
+        "fraction": 0
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    },
+    {
+      "seed": "7",
+      "x": -1,
+      "z": 0,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "blockStates": {
+        "equal": 55498,
+        "total": 65536,
+        "fraction": 0.846832275390625
+      },
+      "blockIds": {
+        "equal": 57195,
+        "total": 65536,
+        "fraction": 0.8727264404296875
+      },
+      "metadata": {
+        "equal": 63756,
+        "total": 65536,
+        "fraction": 0.97283935546875
+      },
+      "bottomBedrockMask": {
+        "equal": 785,
+        "total": 1280,
+        "fraction": 0.61328125
+      },
+      "ores": {
+        "equal": 0,
+        "total": 333,
+        "fraction": 0
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 129,
+        "fraction": 0
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    },
+    {
+      "seed": "7",
+      "x": 0,
+      "z": -1,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "blockStates": {
+        "equal": 56385,
+        "total": 65536,
+        "fraction": 0.8603668212890625
+      },
+      "blockIds": {
+        "equal": 58022,
+        "total": 65536,
+        "fraction": 0.885345458984375
+      },
+      "metadata": {
+        "equal": 63895,
+        "total": 65536,
+        "fraction": 0.9749603271484375
+      },
+      "bottomBedrockMask": {
+        "equal": 773,
+        "total": 1280,
+        "fraction": 0.60390625
+      },
+      "ores": {
+        "equal": 0,
+        "total": 296,
+        "fraction": 0
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 65,
+        "fraction": 0
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    },
+    {
+      "seed": "7",
+      "x": -1,
+      "z": -1,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "blockStates": {
+        "equal": 56938,
+        "total": 65536,
+        "fraction": 0.868804931640625
+      },
+      "blockIds": {
+        "equal": 58904,
+        "total": 65536,
+        "fraction": 0.8988037109375
+      },
+      "metadata": {
+        "equal": 63532,
+        "total": 65536,
+        "fraction": 0.96942138671875
+      },
+      "bottomBedrockMask": {
+        "equal": 771,
+        "total": 1280,
+        "fraction": 0.60234375
+      },
+      "ores": {
+        "equal": 0,
+        "total": 363,
+        "fraction": 0
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 26,
+        "fraction": 0
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    },
+    {
+      "seed": "7",
+      "x": 1,
+      "z": 0,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "blockStates": {
+        "equal": 55759,
+        "total": 65536,
+        "fraction": 0.8508148193359375
+      },
+      "blockIds": {
+        "equal": 57870,
+        "total": 65536,
+        "fraction": 0.883026123046875
+      },
+      "metadata": {
+        "equal": 63420,
+        "total": 65536,
+        "fraction": 0.96771240234375
+      },
+      "bottomBedrockMask": {
+        "equal": 768,
+        "total": 1280,
+        "fraction": 0.6
+      },
+      "ores": {
+        "equal": 0,
+        "total": 321,
+        "fraction": 0
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 11,
+        "fraction": 0
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    },
+    {
+      "seed": "7",
+      "x": 0,
+      "z": 1,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "blockStates": {
+        "equal": 53131,
+        "total": 65536,
+        "fraction": 0.8107147216796875
+      },
+      "blockIds": {
+        "equal": 55030,
+        "total": 65536,
+        "fraction": 0.839691162109375
+      },
+      "metadata": {
+        "equal": 63413,
+        "total": 65536,
+        "fraction": 0.9676055908203125
+      },
+      "bottomBedrockMask": {
+        "equal": 763,
+        "total": 1280,
+        "fraction": 0.59609375
+      },
+      "ores": {
+        "equal": 0,
+        "total": 340,
+        "fraction": 0
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 4,
+        "fraction": 0
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    },
+    {
+      "seed": "-7",
+      "x": 0,
+      "z": 0,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "blockStates": {
+        "equal": 58197,
+        "total": 65536,
+        "fraction": 0.8880157470703125
+      },
+      "blockIds": {
+        "equal": 59581,
+        "total": 65536,
+        "fraction": 0.9091339111328125
+      },
+      "metadata": {
+        "equal": 63766,
+        "total": 65536,
+        "fraction": 0.972991943359375
+      },
+      "bottomBedrockMask": {
+        "equal": 799,
+        "total": 1280,
+        "fraction": 0.62421875
+      },
+      "ores": {
+        "equal": 1,
+        "total": 356,
+        "fraction": 0.0028089887640449437
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 3,
+        "fraction": 0
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    },
+    {
+      "seed": "-7",
+      "x": -1,
+      "z": 0,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "blockStates": {
+        "equal": 58098,
+        "total": 65536,
+        "fraction": 0.886505126953125
+      },
+      "blockIds": {
+        "equal": 59855,
+        "total": 65536,
+        "fraction": 0.9133148193359375
+      },
+      "metadata": {
+        "equal": 63555,
+        "total": 65536,
+        "fraction": 0.9697723388671875
+      },
+      "bottomBedrockMask": {
+        "equal": 781,
+        "total": 1280,
+        "fraction": 0.61015625
+      },
+      "ores": {
+        "equal": 4,
+        "total": 411,
+        "fraction": 0.009732360097323601
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 2,
+        "fraction": 0
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    },
+    {
+      "seed": "-7",
+      "x": 0,
+      "z": -1,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "blockStates": {
+        "equal": 56947,
+        "total": 65536,
+        "fraction": 0.8689422607421875
+      },
+      "blockIds": {
+        "equal": 59013,
+        "total": 65536,
+        "fraction": 0.9004669189453125
+      },
+      "metadata": {
+        "equal": 62895,
+        "total": 65536,
+        "fraction": 0.9597015380859375
+      },
+      "bottomBedrockMask": {
+        "equal": 748,
+        "total": 1280,
+        "fraction": 0.584375
+      },
+      "ores": {
+        "equal": 1,
+        "total": 357,
+        "fraction": 0.0028011204481792717
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 0,
+        "fraction": null
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    },
+    {
+      "seed": "-7",
+      "x": -1,
+      "z": -1,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "blockStates": {
+        "equal": 57946,
+        "total": 65536,
+        "fraction": 0.884185791015625
+      },
+      "blockIds": {
+        "equal": 59115,
+        "total": 65536,
+        "fraction": 0.9020233154296875
+      },
+      "metadata": {
+        "equal": 63897,
+        "total": 65536,
+        "fraction": 0.9749908447265625
+      },
+      "bottomBedrockMask": {
+        "equal": 733,
+        "total": 1280,
+        "fraction": 0.57265625
+      },
+      "ores": {
+        "equal": 0,
+        "total": 369,
+        "fraction": 0
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 1,
+        "fraction": 0
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    },
+    {
+      "seed": "-7",
+      "x": 1,
+      "z": 0,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "blockStates": {
+        "equal": 57560,
+        "total": 65536,
+        "fraction": 0.8782958984375
+      },
+      "blockIds": {
+        "equal": 59492,
+        "total": 65536,
+        "fraction": 0.90777587890625
+      },
+      "metadata": {
+        "equal": 63144,
+        "total": 65536,
+        "fraction": 0.9635009765625
+      },
+      "bottomBedrockMask": {
+        "equal": 789,
+        "total": 1280,
+        "fraction": 0.61640625
+      },
+      "ores": {
+        "equal": 0,
+        "total": 415,
+        "fraction": 0
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 0,
+        "fraction": null
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    },
+    {
+      "seed": "-7",
+      "x": 0,
+      "z": 1,
+      "referenceStage": "populated",
+      "biomes": {
+        "equal": 0,
+        "total": 256,
+        "fraction": 0
+      },
+      "topNonAir": {
+        "equal": 2,
+        "total": 256,
+        "fraction": 0.0078125
+      },
+      "blockStates": {
+        "equal": 58017,
+        "total": 65536,
+        "fraction": 0.8852691650390625
+      },
+      "blockIds": {
+        "equal": 59590,
+        "total": 65536,
+        "fraction": 0.909271240234375
+      },
+      "metadata": {
+        "equal": 63178,
+        "total": 65536,
+        "fraction": 0.964019775390625
+      },
+      "bottomBedrockMask": {
+        "equal": 790,
+        "total": 1280,
+        "fraction": 0.6171875
+      },
+      "ores": {
+        "equal": 0,
+        "total": 413,
+        "fraction": 0
+      },
+      "vegetation": {
+        "equal": 0,
+        "total": 28,
+        "fraction": 0
+      },
+      "density": "unavailable in region files",
+      "structures": "requires dedicated structure fixtures",
+      "note": "topNonAir is calculated from both block arrays. It is distinct from the stored light heightmap."
+    }
+  ],
+  "limitations": [
+    "Block agreement includes shared air and stone. It does not establish generator parity.",
+    "Density samples are absent from Anvil data.",
+    "Stored light heightmaps are preserved by the reader. topNonAir comparisons use block arrays.",
+    "Structure parity needs dedicated fixtures."
+  ]
+}

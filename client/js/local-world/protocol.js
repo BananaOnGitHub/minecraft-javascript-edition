@@ -4,6 +4,7 @@ import { isWater } from './terrain.js';
 export function readAction(bytes) {
   const r = new Reader(bytes);
   switch (r.varint()) {
+    case 0x01: return { type: 'chat', text: r.string() };
     case 0x04: return { type: 'move', x: r.f64(), y: r.f64(), z: r.f64() };
     case 0x05: return { type: 'move', yaw: r.f32(), pitch: r.f32() };
     case 0x06: return { type: 'move', x: r.f64(), y: r.f64(), z: r.f64(), yaw: r.f32(), pitch: r.f32() };

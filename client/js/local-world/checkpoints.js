@@ -1,13 +1,17 @@
+import { uniqueDirectory } from './world-metadata.js';
+
 export const WORLD_DATABASE = 'minecraftjs-terrace-worlds'
 const STORE = 'checkpoints'
+const CHUNKS = 'world-chunks'
 
 export function openCheckpointStore(databaseName, indexedDB = globalThis.indexedDB) {
   return new Promise((resolve, reject) => {
     if (!indexedDB) throw new Error('Local world storage is unavailable in this browser')
-    const request = indexedDB.open(databaseName, 1)
+    const request = indexedDB.open(databaseName, 2)
     let blocked = false
     request.onupgradeneeded = () => {
-      request.result.createObjectStore(STORE, { keyPath: 'id' })
+      if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE, { keyPath: 'id' })
+      if (!request.result.objectStoreNames.contains(CHUNKS)) request.result.createObjectStore(CHUNKS, { keyPath: ['worldId', 'x', 'z'] })
     }
     request.onerror = () => reject(request.error)
     request.onblocked = () => {
@@ -28,9 +32,9 @@ export function openCheckpointStore(databaseName, indexedDB = globalThis.indexed
 
 function checkpointStore(database) {
   // Resolve writes only after IndexedDB commits the entire transaction.
-  function transact(mode, useStore) {
+  function transact(mode, useStore, storeName = STORE) {
     return new Promise((resolve, reject) => {
-      const transaction = database.transaction(STORE, mode)
+      const transaction = database.transaction(storeName, mode)
       let result
       let failure
       transaction.oncomplete = () => resolve(result)
@@ -41,7 +45,7 @@ function checkpointStore(database) {
         transaction.abort()
       }
       try {
-        useStore(transaction.objectStore(STORE), complete, abort)
+        useStore(transaction.objectStore(storeName), complete, abort)
       } catch (error) {
         abort(error)
       }
@@ -69,6 +73,24 @@ function checkpointStore(database) {
   }
 
   return {
+    createWorld(state) {
+      return transact('readwrite', (store, complete) => {
+        const names = new Set()
+        const read = store.openCursor()
+        read.onsuccess = () => {
+          const cursor = read.result
+          if (cursor) {
+            names.add((cursor.value.state.directory ?? String(cursor.primaryKey)).toLowerCase())
+            cursor.continue()
+            return
+          }
+          state.directory = uniqueDirectory(state.directory, names)
+          const record = { id: state.id, state, revision: 1, savedAt: Date.now() }
+          store.add(record)
+          complete(record)
+        }
+      })
+    },
     create(id, state) {
       return transact('readwrite', (store, complete) => {
         const record = { id, state, revision: 1, savedAt: Date.now() }
@@ -97,6 +119,36 @@ function checkpointStore(database) {
           cursor.continue()
         }
       })
+    },
+    summaries() {
+      return transact('readonly', (store, complete) => {
+        const read = store.openCursor()
+        const summaries = []
+        read.onsuccess = () => {
+          const cursor = read.result
+          if (!cursor) { complete(summaries); return }
+          const { id, state, savedAt } = cursor.value
+          summaries.push({ id, displayName: state.displayName ?? id, directory: state.directory ?? id, savedAt })
+          cursor.continue()
+        }
+      })
+    },
+    loadChunk(worldId, x, z) {
+      return transact('readonly', (store, complete) => {
+        const read = store.get([worldId, x, z])
+        read.onsuccess = () => complete(read.result)
+      }, CHUNKS)
+    },
+    saveChunk(record) {
+      // The first committed base column is immutable for this world. Two tabs
+      // may independently generate it before either transaction begins.
+      return transact('readwrite', (store, complete) => {
+        const read = store.get([record.worldId, record.x, record.z])
+        read.onsuccess = () => {
+          if (!read.result) store.add(record)
+          complete(read.result ?? record)
+        }
+      }, CHUNKS)
     },
     save,
     close() {

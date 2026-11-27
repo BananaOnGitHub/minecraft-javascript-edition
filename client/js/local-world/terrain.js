@@ -1,5 +1,7 @@
 import { LandscapeTerrain } from './landscape.js';
 import { worldSettings } from './world-settings.js';
+import { LayeredFlatTerrain } from './flat-world.js';
+import { validateGenerator } from './world-metadata.js';
 
 export const CHUNK_LIMIT = 8;
 export const FOUNDATION_Y = 48;
@@ -87,8 +89,21 @@ export class TerraceTerrain {
 
 export function createTerrain(state) {
   if (state.version === 1) return new TerraceTerrain(state.seed, state.edits);
+  validateGenerator(state);
+  if (state.version === 3 && state.generator.id === 'layered-flat-v1') {
+    return new LayeredFlatTerrain(state.seed, state.generator.configuration, state.edits);
+  }
   const settings = worldSettings(state.settings);
-  if (settings.worldType === 'terraces') return new TerraceTerrain(seedNumber(state.seed), state.edits);
+  if (settings.worldType === 'terraces') {
+    const terrain = new TerraceTerrain(seedNumber(state.seed), state.version === 3 ? [] : state.edits);
+    if (state.version === 3) {
+      for (const [key, changes] of state.edits) {
+        const [cx, cz] = key.split(',').map(Number);
+        for (const [index, value] of changes) terrain.set(cx * 16 + (index & 15), index >> 8, cz * 16 + ((index >> 4) & 15), value);
+      }
+    }
+    return terrain;
+  }
   return new LandscapeTerrain(state.seed, settings, state.edits);
 }
 

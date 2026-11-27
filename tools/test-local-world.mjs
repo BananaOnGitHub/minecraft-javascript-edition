@@ -12,6 +12,7 @@ import { LocalWorldSocket } from '../client/js/local-world/socket.js';
 import { TerraceTerrain, createTerrain, collides, seedNumber } from '../client/js/local-world/terrain.js';
 import { describeWorld, resolveSeed, seedWords, worldSettings } from '../client/js/local-world/world-settings.js';
 import { chunkPacket } from '../client/js/local-world/protocol.js';
+import { resolveJavaSeed } from '../client/js/local-world/java-random.js';
 import { CreateLocalWorldScreen } from '../client/js/gui/screens/local-worlds.js';
 import { Connection } from '../client/js/net/connection.js';
 import { C, decodePacket } from '../client/js/net/packets.js';
@@ -33,6 +34,27 @@ function fileStore(file) {
   }
   return {
     load,
+    async createWorld(state) {
+      const meta = await this.create(state.id, state);
+      return { ...meta, state };
+    },
+    async loadChunk(worldId, x, z) {
+      try {
+        const record = JSON.parse(await readFile(file + '.' + x + '.' + z, 'utf8'));
+        record.states = Uint16Array.from(record.states);
+        record.biomes = Uint8Array.from(record.biomes);
+        return record.worldId === worldId ? record : undefined;
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        return undefined;
+      }
+    },
+    async saveChunk(record) {
+      await writeFile(file + '.' + record.x + '.' + record.z, JSON.stringify({
+        ...record, states: [...record.states], biomes: [...record.biomes],
+      }));
+      return record;
+    },
     async create(id, state) {
       if (await load(id)) throw new DOMException('Duplicate', 'ConstraintError');
       return write({ id, revision: 1, state });
@@ -129,7 +151,7 @@ if (!isMainThread) {
       assert.equal(metrics.saves, 2);
       await live.conn.close();
 
-      const reopened = await connect(t, platform, { name: 'Terrace' });
+      const reopened = await connect(t, platform, { id: JSON.parse(await readFile(file, 'utf8')).id });
       const position = reopened.packets.find(p => p.name === 'position');
       assert.deepEqual([position.x, position.y, position.z], [18.5, 61, 0.5]);
       const loaded = await until(() => reopened.packets.find(p => p.name === 'map_chunk' && p.x === 0 && p.z === 0));
@@ -138,10 +160,9 @@ if (!isMainThread) {
       assert.equal(chunk.getState(3, 55, 0), 0);
       await reopened.conn.close();
 
-      const duplicate = new Connection();
-      t.after(() => duplicate.close());
-      await assert.rejects(duplicate.connectLocal(new LocalWorldSocket(platform,
-        { name: 'Terrace', seed: 'different', create: true })), /already exists/);
+      const saved = JSON.parse(await readFile(file, 'utf8'));
+      assert.equal(saved.state.displayName, 'Terrace');
+      assert.equal(saved.state.generator.id, 'terraces-v1');
     });
 
   test('seeded terrain is independent of chunk request order and edits restore the base', () => {
@@ -159,7 +180,7 @@ if (!isMainThread) {
     assert.deepEqual(terrain.snapshot(), []);
   });
 
-  test('world creation carries a seed, terrain preset and optional features through the screen stack', () => {
+  test('world creation retains its fields and mode-dependent defaults across pages', () => {
     let options;
     const game = {
       gui: { width: 320, height: 240 },
@@ -168,39 +189,37 @@ if (!isMainThread) {
     };
     const create = new CreateLocalWorldScreen(game, null);
     game.screens.open(create);
-    assert.equal(create.settings.worldType, 'natural');
+    assert.equal(create.creation.gameMode, 'survival');
     create.nameField.setText('Mountain workshop');
-    create.buttons.find(b => b.id === 2).onClick();
-    assert.match(create.seedField.text, /^-?\d+$/);
-    create.seedField.setText('-9223372036854775808');
+    create.buttons.find(b => b.id === 2).onClick(); // Hardcore
     create.buttons.find(b => b.id === 3).onClick();
+    assert.equal(create.buttons.find(b => b.id === 6).enabled, false);
+    assert.equal(create.buttons.find(b => b.id === 7).enabled, false);
+    create.seedField.setText('-9223372036854775808');
+    create.buttons.find(b => b.id === 8).onClick();
+    create.buttons.find(b => b.id === 2).onClick(); // Creative
+    assert.equal(create.creation.cheats, true);
+    create.buttons.find(b => b.id === 3).onClick();
+    create.buttons.find(b => b.id === 6).onClick(); // Explicit cheats override.
+    create.buttons.find(b => b.id === 5).onClick(); // Flat
     assert.equal(create.settings.worldType, 'flat');
-    create.buttons.find(b => b.id === 4).onClick();
-    const more = game.screens.current;
-    assert.equal(more.buttons.find(b => b.id === 1).enabled, false); // Surface water is unavailable on the flat preset.
-    more.buttons.find(b => b.id === 0).onClick();
-    more.buttons.find(b => b.id === 4).onClick();
-    more.buttons.find(b => b.id === 5).onClick();
+    create.buttons.find(b => b.id === 9).onClick();
+    const layers = game.screens.current;
+    layers.count.setText('2');
+    layers.buttons.find(b => b.id === 0).onClick();
     assert.equal(game.screens.current, create);
+    assert.equal(create.flat.layers.at(-1).count, 2);
+    create.buttons.find(b => b.id === 8).onClick();
+    create.buttons.find(b => b.id === 2).onClick(); // Survival, retains override.
+    create.buttons.find(b => b.id === 2).onClick(); // Hardcore
+    create.buttons.find(b => b.id === 2).onClick(); // Creative
+    assert.equal(create.creation.cheats, false);
     create.buttons.find(b => b.id === 0).onClick();
-    assert.deepEqual(options, {
-      name: 'Mountain workshop', seed: '-9223372036854775808', create: true,
-      settings: { worldType: 'flat', trees: true, lakes: false, caverns: false, landmarks: false, starterMaterials: false },
-    });
-    for (let i = 0; i < 3; i++) create.buttons.find(b => b.id === 3).onClick();
-    assert.equal(create.settings.worldType, 'custom');
-    create.buttons.find(b => b.id === 4).onClick();
-    game.screens.current.buttons.find(b => b.id === 6).onClick();
-    const sliders = game.screens.current;
-    sliders.buttons.find(b => b.id === 0).onChange(1);
-    sliders.buttons.find(b => b.id === 3).onChange(0);
-    sliders.buttons.find(b => b.id === 4).onClick();
-    game.screens.current.buttons.find(b => b.id === 5).onClick();
-    create.buttons.find(b => b.id === 0).onClick();
-    assert.equal(options.settings.worldType, 'custom');
-    assert.equal(options.settings.baseHeight, 136);
-    assert.equal(options.settings.waterLevel, 16);
+    assert.equal(options.name, 'Mountain workshop');
     assert.equal(options.seed, '-9223372036854775808');
+    assert.equal(options.creation.cheats, false);
+    assert.equal(options.settings.worldType, 'flat');
+    assert.equal(options.flat.layers.at(-1).count, 2);
   });
 
   test('custom elevation and water level affect generated columns, and flooded worlds have clear spawn space', () => {
@@ -302,27 +321,27 @@ if (!isMainThread) {
     const platform = { createWorker: () => nodeWorker(file) };
     const live = await connect(t, platform, { name: 'Flat', seed: '', settings: { worldType: 'flat', starterMaterials: false }, create: true });
     const state = JSON.parse(await readFile(file, 'utf8')).state;
-    assert.equal(state.version, 2);
+    assert.equal(state.version, 3);
     assert.equal(state.settings.worldType, 'flat');
     assert.equal(state.settings.starterMaterials, false);
     assert.equal(describeWorld(state).seed, state.seed);
     assert.equal(resolveSeed(state.seed), state.seed);
     const position = live.packets.find(p => p.name === 'position');
-    assert.deepEqual([position.x, position.y, position.z], [0.5, 64, 0.5]);
+    assert.deepEqual([position.x, position.y, position.z], [0.5, 33, 0.5]);
     assert.equal(live.packets.filter(p => p.name === 'set_slot' && p.item).length, 0);
     live.conn.send(C.creativeSlot(36, { id: 2, count: 3, damage: 0 }));
-    live.conn.send(C.blockPlace(2, 63, 0, 1, { id: 2, count: 1, damage: 0 }, 8, 8, 8));
+    live.conn.send(C.blockPlace(2, 32, 0, 1, { id: 2, count: 1, damage: 0 }, 8, 8, 8));
     await until(() => live.packets.some(p => p.name === 'block_change' && p.state === 2 << 4));
-    live.conn.send(C.position(0.5, 66, 0.5, true));
-    for (let x = 8.5; x <= 160.5; x += 8) live.conn.send(C.position(x, 66, 0.5, true));
+    live.conn.send(C.position(0.5, 35, 0.5, true));
+    for (let x = 8.5; x <= 160.5; x += 8) live.conn.send(C.position(x, 35, 0.5, true));
     await until(() => live.packets.some(p => p.name === 'map_chunk' && p.x >= 10 && p.bitMap));
     await live.conn.close();
     const saved = JSON.parse(await readFile(file, 'utf8')).state;
     assert.deepEqual(saved.settings, state.settings);
     assert.equal(saved.seed, state.seed);
     assert.equal(saved.position.x, 160.5);
-    assert.equal(createTerrain(saved).get(2, 64, 0), 2 << 4);
-    const reopened = await connect(t, platform, { name: 'Flat' });
+    assert.equal(createTerrain(saved).get(2, 33, 0), 2 << 4);
+    const reopened = await connect(t, platform, { id: saved.id });
     assert.equal(reopened.packets.find(p => p.name === 'position').x, saved.position.x);
     await reopened.conn.close();
   });
@@ -347,7 +366,7 @@ if (!isMainThread) {
     assert.deepEqual(column.chunkData, expected.chunkData);
     assert.equal(live.decodeErrors.length, 0);
     await live.conn.close();
-    const reopened = await connect(t, platform, { name: 'Natural' });
+    const reopened = await connect(t, platform, { id: record.id });
     assert.deepEqual(reopened.packets.find(p => p.name === 'map_chunk').chunkData, expected.chunkData);
     await reopened.conn.close();
   });
