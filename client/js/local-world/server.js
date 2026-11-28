@@ -145,7 +145,7 @@ class LocalWorldSession {
     this.streaming = streaming;
     try {
       await streaming;
-      this.flushGenerationUpdates();
+      await this.flushGenerationUpdates();
     } catch (error) {
       clearInterval(this.timer);
       this.control('error', { message: error.message });
@@ -188,7 +188,8 @@ class LocalWorldSession {
       .sort((a, b) => a[1].distance - b[1].distance);
   }
 
-  flushGenerationUpdates(exclude) {
+  async flushGenerationUpdates(exclude) {
+    await this.terrain.flushLighting?.();
     for (const changed of this.terrain.takeChangedColumns?.() ?? []) {
       const key = changed.x + ',' + changed.z;
       if (this.loaded.has(key) && key !== exclude) this.send(chunkPacket(this.terrain, changed.x, changed.z));
@@ -203,7 +204,7 @@ class LocalWorldSession {
       const start = performance.now();
       await this.terrain.prepare?.(x, z);
       if (this.stopping) return;
-      this.flushGenerationUpdates(key);
+      await this.flushGenerationUpdates(key);
       if (Math.abs(x - this.center[0]) > this.distance || Math.abs(z - this.center[1]) > this.distance) continue;
       const packet = chunkPacket(this.terrain, x, z);
       const elapsed = performance.now() - start;
@@ -228,7 +229,7 @@ class LocalWorldSession {
       [position.x - 0.31, position.z + 0.31], [position.x + 0.31, position.z + 0.31]]) {
       if (this.terrain.contains(x, z)) await this.terrain.prepare?.(Math.floor(x / 16), Math.floor(z / 16));
     }
-    this.flushGenerationUpdates();
+    await this.flushGenerationUpdates();
     if (collides(this.terrain, position)) {
       this.send(positionPacket(this.position));
       return;
@@ -252,7 +253,7 @@ class LocalWorldSession {
     const { x, y, z } = target;
     if (!this.terrain.contains(x, z) || y < this.terrain.minY || y > this.terrain.maxY) return;
     await this.terrain.prepare?.(Math.floor(x / 16), Math.floor(z / 16));
-    this.flushGenerationUpdates();
+    await this.flushGenerationUpdates();
     const oldState = this.terrain.get(x, y, z);
     if (allowed && state !== oldState) {
       this.terrain.set(x, y, z, state);
@@ -264,6 +265,7 @@ class LocalWorldSession {
         throw error;
       }
     }
+    await this.flushGenerationUpdates();
     this.send(blockPacket(target, this.terrain.get(x, y, z)));
   }
 
@@ -276,7 +278,7 @@ class LocalWorldSession {
     for (const point of [target, next]) {
       if (this.terrain.contains(point.x, point.z)) await this.terrain.prepare?.(Math.floor(point.x / 16), Math.floor(point.z / 16));
     }
-    this.flushGenerationUpdates();
+    await this.flushGenerationUpdates();
     const item = this.hotbar[this.selectedSlot];
     const [x0, y0, z0, x1, y1, z1] = playerBox(this.position);
     const occupied = next.x < x1 && next.x + 1 > x0 && next.y < y1 &&

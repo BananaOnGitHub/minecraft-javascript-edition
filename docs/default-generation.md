@@ -5,6 +5,19 @@ Its reserved identifier is `java-1.8.9-default-v1`. It is under development and
 is not registered as a playable generator yet. Existing `landscape-v1`, flat,
 and terrace worlds keep their original generators and saved columns.
 
+## Settled gameplay lighting
+
+The experimental adapter now derives settled gameplay sky/block arrays in a
+separate read-only lighting view. Population-time cached lighting and all
+existing numerical fixtures remain unchanged. The reported seed
+`-321252946616194827` reproduces 338 initially dark exposed positions around
+`(123,75,1)`; native maintenance and the new view agree exactly. Seven base and
+three edited reference states cover 79,360 positions with zero sky or block-light
+differences. Protocol decoding, AO/lightmap sampling, border refresh and
+save/reopen tests are included. See [gameplay-lighting.md](gameplay-lighting.md).
+Regression checkpoint: **64/64 generation**, **99/99 local worlds**.
+Rendered browser confirmation remains outstanding (automation connection refused).
+
 ## Creative-flight stability correction
 
 `1be7c08` corrects zero-length large-oak limbs that produced NaN coordinates

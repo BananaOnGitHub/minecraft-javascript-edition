@@ -1,0 +1,110 @@
+{
+  "reference": "Local unmodified Minecraft Java 1.8.9, isolated gameplay-light behavioral observations",
+  "seed": "-321252946616194827",
+  "cases": [
+    {
+      "name": "reported-overhang",
+      "stage": "settled",
+      "x": 7,
+      "z": 0,
+      "samples": 7936,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    },
+    {
+      "name": "reported-east-overhang",
+      "stage": "settled",
+      "x": 8,
+      "z": 0,
+      "samples": 7936,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    },
+    {
+      "name": "reported-west-overhang",
+      "stage": "settled",
+      "x": 6,
+      "z": 0,
+      "samples": 7936,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    },
+    {
+      "name": "reported-west-south-overhang",
+      "stage": "settled",
+      "x": 6,
+      "z": 1,
+      "samples": 7936,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    },
+    {
+      "name": "roof-positive",
+      "stage": "settled",
+      "x": 400,
+      "z": 400,
+      "samples": 7936,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    },
+    {
+      "name": "roof-positive",
+      "stage": "edited",
+      "x": 400,
+      "z": 400,
+      "samples": 7936,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    },
+    {
+      "name": "roof-negative",
+      "stage": "settled",
+      "x": -400,
+      "z": -400,
+      "samples": 7936,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    },
+    {
+      "name": "roof-negative",
+      "stage": "edited",
+      "x": -400,
+      "z": -400,
+      "samples": 7936,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    },
+    {
+      "name": "transparent",
+      "stage": "settled",
+      "x": 410,
+      "z": 410,
+      "samples": 7936,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    },
+    {
+      "name": "transparent",
+      "stage": "edited",
+      "x": 410,
+      "z": 410,
+      "samples": 7936,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    }
+  ],
+  "naturalSkyChangedByMaintenance": 338,
+  "samples": 79360,
+  "skyMismatches": 0,
+  "blockMismatches": 0
+}

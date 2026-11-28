@@ -96,7 +96,7 @@ async function until(find, limit = 160) {
   throw new Error('Timed out waiting for condition');
 }
 
-test('chunkPacket transmits persisted skyLight, blockLight, light-only halo refreshes and relit player edits', async () => {
+test('chunkPacket preserves population cache separately from settled gameplay light and relit player edits', async () => {
   const store = await openCheckpointStore('light-payload', new IDBFactory());
   const baseCol = () => {
     const states = new Uint16Array(65536);
@@ -130,13 +130,20 @@ test('chunkPacket transmits persisted skyLight, blockLight, light-only halo refr
   const refreshed = terrain.takeChangedColumns();
   assert.ok(refreshed.some(c => c.x === 1 && c.z === 0));
 
-  // Verify neighbor chunk packet now includes section 4 (even though no blocks at y=70!) and light=6
+  // Persisted population light still contains the captured light-only write.
+  const persisted = await terrain.population.read(1, 0);
+  assert.equal((persisted.skyLight[(70*256+2)>>1] >> 0) & 15, 6);
+  const rawPkt = decodePacket(chunkPacket({minY:0,column:()=>persisted},1,0));
+  const rawChunk = new Chunk(1,0,true);
+  rawChunk.load(rawPkt.chunkData,0,rawPkt.bitMap,true,true);
+  assert.equal(rawChunk.getSkyLight(2,70,0),6,'protocol preserves supplied cached arrays');
+  // Gameplay derives settled light without overwriting that population cache.
   const updatedPkt = decodePacket(chunkPacket(terrain, 1, 0));
   assert.ok(updatedPkt.bitMap & (1 << 4), 'section 4 must be included for light-only halo update');
   const updatedChunk = new Chunk(1, 0, true);
   updatedChunk.load(updatedPkt.chunkData, 0, updatedPkt.bitMap, true, true);
   assert.equal(updatedChunk.getState(1, 64, 0), 1 << 4);
-  assert.equal(updatedChunk.getSkyLight(2, 70, 0), 6);
+  assert.equal(updatedChunk.getSkyLight(2, 70, 0), 15);
 
   // Verify glowstone block light in (0,0)
   const originPkt = decodePacket(chunkPacket(terrain, 0, 0));

@@ -1,5 +1,15 @@
 # Stateful population research checkpoint
 
+## Separate gameplay lighting view
+
+`GrowingTerrain189` preserves the generation snapshots described below, including
+cached sky/block arrays. It now derives separate settled lighting for packets
+from a read-only 3×3 halo, with independent bounded view/input caches. Population
+and player changes invalidate adjacent transmitted views even for light-only
+changes. These derived arrays are rebuilt after reopen, never committed over
+population caches. See [gameplay-lighting.md](gameplay-lighting.md) for the
+numeric native comparison and preserved persistence/RNG contracts.
+
 ## Growing storage checkpoint (`797d96b`)
 
 The new `GrowingPopulation189` replaces the full-arena storage contract for

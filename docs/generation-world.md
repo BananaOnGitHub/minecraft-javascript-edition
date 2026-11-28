@@ -8,6 +8,16 @@ The independent host now matches **all 20 expanded service cases** and **all
 and neighbor-light observations. The controlled reference-lighting host remains
 as a separate orchestrator regression; it is not used by the independent host.
 
+## Gameplay lighting is a separate view
+
+The population cache remains deliberately unsolved between native generation
+updates. `GrowingTerrain189` now derives settled sky/block light from current
+states plus player overlays for streaming. It never writes that light back to
+this host or its generation snapshots. Read-only 3×3 halos do not admit sources;
+neighbor light refreshes run before packets, including idle streaming ticks.
+See [gameplay-lighting.md](gameplay-lighting.md) for the reported-seed numeric
+comparison, lifecycle separation, protocol/client checks and limitations.
+
 ## Interface
 
 Construct with `{random, loadColumn, minChunkX, maxChunkX, minChunkZ, maxChunkZ}`.
