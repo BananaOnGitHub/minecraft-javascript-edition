@@ -6,8 +6,8 @@ import {BigOakTree189} from './trees.js';
 import {populationSeed189} from './population-seed.js';
 
 export const EXPERIMENTAL_DEFAULT_189 = Object.freeze({
-  id:'java-1.8.9-default-experimental-stateful-v1', enabled:false,
-  reason:'Native readiness/restart semantics and growing-world journal integration remain unverified'
+  id:'java-1.8.9-default-experimental-stateful-v1', enabled:true,
+  reason:'Experimental 1.8.9 Default (partial population: no structures, dungeons, animal spawning or full fluid simulation)'
 });
 
 const key=(x,z)=>`${x},${z}`;

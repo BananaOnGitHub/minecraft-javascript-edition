@@ -1,6 +1,7 @@
 import { parseJavaLong, resolveJavaSeed } from './java-random.js';
 import { flatSettings } from './flat-world.js';
 import { worldSettings } from './world-settings.js';
+import { EXPERIMENTAL_DEFAULT_189 } from './generation/v1_8_9/stateful-population.js';
 
 export const SAVE_VERSION = 3;
 const MODES = ['survival', 'hardcore', 'creative'];
@@ -11,6 +12,7 @@ const GENERATORS = {
   custom: 'landscape-v1',
   flat: 'layered-flat-v1',
   terraces: 'terraces-v1',
+  defaultExperimental: EXPERIMENTAL_DEFAULT_189.id,
 };
 
 export function newCreationOptions() {
@@ -83,6 +85,9 @@ export function validateGenerator(state) {
   if (!expected || state.generator?.id !== expected || state.generator.version !== 1) {
     throw new Error('This world requires an unavailable generator version. Its save has been preserved.');
   }
+  if (expected === EXPERIMENTAL_DEFAULT_189.id && !EXPERIMENTAL_DEFAULT_189.enabled) {
+    throw new Error(EXPERIMENTAL_DEFAULT_189.reason);
+  }
   if (parseJavaLong(state.seed) === null) throw new Error('This world has an invalid seed.');
 }
 
@@ -92,7 +97,9 @@ export function creationStatus(settings, options) {
   if (options.gameMode === 'hardcore') messages.push('Permanent death is pending.');
   if (options.structures) messages.push('Structure generation is pending.');
   if (options.bonusChest) messages.push('Starter chest generation is pending.');
-  if (settings.worldType !== 'flat' && settings.worldType !== 'terraces') {
+  if (settings.worldType === 'defaultExperimental') {
+    messages.push('Experimental 1.8.9 Default: partial population (no structures, dungeons, animals or full fluids).');
+  } else if (settings.worldType !== 'flat' && settings.worldType !== 'terraces') {
     messages.push('Original landscape generator. Native terrain parity is pending.');
   }
   return messages;

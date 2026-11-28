@@ -54,20 +54,31 @@ export function chunkPacket(terrain, cx, cz) {
   const sections = ((1 << sectionCount) - 1) << firstSection;
   const data = new Uint8Array(stateBytes + 2 * lightBytes + 256);
   const view = new DataView(data.buffer);
-  for (let z = 0; z < 16; z++) {
-    for (let x = 0; x < 16; x++) {
-      let sky = 15;
-      for (let y = (lastSection + 1) * 16 - 1; y >= firstSection * 16; y--) {
-        const cell = (y << 8) | (z << 4) | x;
-        const i = cell - (firstSection << 12);
-        const state = column.states[cell];
-        view.setUint16(i * 2, state, true);
-        if (state) {
-          const id = state >> 4;
-          const opacity = isWater(state) ? 3 : id === 18 ? 1 : id === 20 ? 0 : 15;
-          sky = Math.max(0, sky - opacity);
+  if (column.blockLight && column.skyLight) {
+    const startCell = firstSection << 12;
+    const endCell = (lastSection + 1) << 12;
+    for (let cell = startCell, i = 0; cell < endCell; cell++, i++) {
+      view.setUint16(i * 2, column.states[cell], true);
+    }
+    const startLight = firstSection * 2048;
+    data.set(column.blockLight.subarray(startLight, startLight + lightBytes), stateBytes);
+    data.set(column.skyLight.subarray(startLight, startLight + lightBytes), stateBytes + lightBytes);
+  } else {
+    for (let z = 0; z < 16; z++) {
+      for (let x = 0; x < 16; x++) {
+        let sky = 15;
+        for (let y = (lastSection + 1) * 16 - 1; y >= firstSection * 16; y--) {
+          const cell = (y << 8) | (z << 4) | x;
+          const i = cell - (firstSection << 12);
+          const state = column.states[cell];
+          view.setUint16(i * 2, state, true);
+          if (state) {
+            const id = state >> 4;
+            const opacity = isWater(state) ? 3 : id === 18 ? 1 : id === 20 ? 0 : 15;
+            sky = Math.max(0, sky - opacity);
+          }
+          data[stateBytes + lightBytes + (i >> 1)] |= sky << ((i & 1) * 4);
         }
-        data[stateBytes + lightBytes + (i >> 1)] |= sky << ((i & 1) * 4);
       }
     }
   }

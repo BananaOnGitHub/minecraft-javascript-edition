@@ -50,6 +50,7 @@ export const MINECRAFTJS_EN = {
   'minecraftjs.local.terrain.wide': 'Broad regions',
   'minecraftjs.local.terrain.custom': 'Custom',
   'minecraftjs.local.terrain.terraces': 'Terrace Yard',
+  'minecraftjs.local.terrain.defaultExperimental': 'Default 1.8.9 (Exp.)',
   'minecraftjs.local.options': 'World options...',
   'minecraftjs.local.customize': 'Customize terrain...',
   'minecraftjs.local.parameter.baseHeight': 'Base elevation',

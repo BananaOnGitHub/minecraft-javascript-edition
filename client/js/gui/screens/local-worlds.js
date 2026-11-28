@@ -216,7 +216,7 @@ export class CreateLocalWorldScreen extends Screen {
     }
     const statuses = creationStatus(this.settings, this.creation);
     if (statuses.length) {
-      const message = statuses.find(message => message.startsWith('Original')) ?? statuses[0];
+      const message = statuses.find(message => message.startsWith('Original') || message.startsWith('Experimental')) ?? statuses[0];
       const lines = gui.font.wrap(message, width);
       for (const [i, line] of lines.slice(0, 2).entries()) gui.text(line, x, 184 + i * 10, 0xc0a080);
     }

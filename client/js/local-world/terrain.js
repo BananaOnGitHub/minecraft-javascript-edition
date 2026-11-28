@@ -2,6 +2,8 @@ import { LandscapeTerrain } from './landscape.js';
 import { worldSettings } from './world-settings.js';
 import { LayeredFlatTerrain } from './flat-world.js';
 import { validateGenerator } from './world-metadata.js';
+import { EXPERIMENTAL_DEFAULT_189 } from './generation/v1_8_9/stateful-population.js';
+import { ExperimentalDefaultTerrain189 } from './generation/v1_8_9/experimental-default.js';
 
 export const CHUNK_LIMIT = 8;
 export const FOUNDATION_Y = 48;
@@ -93,6 +95,9 @@ export function createTerrain(state) {
   if (state.version === 3 && state.generator.id === 'layered-flat-v1') {
     return new LayeredFlatTerrain(state.seed, state.generator.configuration, state.edits);
   }
+  if (state.version === 3 && state.generator.id === EXPERIMENTAL_DEFAULT_189.id) {
+    return new ExperimentalDefaultTerrain189(state.seed);
+  }
   const settings = worldSettings(state.settings);
   if (settings.worldType === 'terraces') {
     const terrain = new TerraceTerrain(seedNumber(state.seed), state.version === 3 ? [] : state.edits);
@@ -122,6 +127,8 @@ export function playerBox({ x, y, z }) {
   return [x - radius, y, z - radius, x + radius, y + Math.fround(1.8), z + radius];
 }
 
+const PASSABLE_IDS = new Set([6, 8, 9, 10, 11, 31, 32, 37, 38, 39, 40, 83, 106, 175]);
+
 export function collides(terrain, position) {
   const box = playerBox(position);
   const epsilon = 0.00001;
@@ -133,7 +140,7 @@ export function collides(terrain, position) {
     for (let z = Math.floor(box[2] + epsilon); z <= Math.floor(box[5] - epsilon); z++) {
       for (let x = Math.floor(box[0] + epsilon); x <= Math.floor(box[3] - epsilon); x++) {
         const state = terrain.get(x, y, z);
-        if (state && !isWater(state)) return true;
+        if (state && !PASSABLE_IDS.has(state >> 4) && state !== (78 << 4)) return true;
       }
     }
   }

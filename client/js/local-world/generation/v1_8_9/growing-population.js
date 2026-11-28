@@ -89,7 +89,12 @@ export class GrowingPopulation189 {
     const {meta,columns}=await this.store.loadGenerationWindow(this.identity,[[x,z]]);this.check(meta);
     const stored=columns[0],base=await this.loadBase(x,z);
     if(!stored?.generated)return {...base,revision:stored?.revision??0};
-    const states=new Uint16Array(65536);stored.generated.sections.forEach((s,i)=>states.set(s.blocks,i*4096));
-    return {states,biomes:stored.generated.biomes,revision:stored.revision,population:stored.population};
+    const states=new Uint16Array(65536),skyLight=new Uint8Array(32768),blockLight=new Uint8Array(32768);
+    let lastSection=0;
+    stored.generated.sections.forEach((s,i)=>{
+      states.set(s.blocks,i*4096);skyLight.set(s.skyLight,i*2048);blockLight.set(s.blockLight,i*2048);
+      if(stored.generated.allocated?.[i]||s.blocks.some(v=>v!==0)||s.blockLight.some(v=>v!==0)||s.skyLight.some(v=>v!==0xff))lastSection=i;
+    });
+    return {states,biomes:stored.generated.biomes,skyLight,blockLight,lastSection,revision:stored.revision,population:stored.population};
   }
 }

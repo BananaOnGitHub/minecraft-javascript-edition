@@ -7,8 +7,10 @@ import { SAVE_VERSION, creationOptions, newWorldState } from './world-metadata.j
 import { PersistedTerrain } from './persisted-terrain.js';
 import { acquireWorldOwnership } from './world-ownership.js';
 import { EXPERIMENTAL_DEFAULT_189 } from './generation/v1_8_9/stateful-population.js';
+import { createExperimentalGrowingTerrain, findSafeExperimentalSpawn } from './generation/v1_8_9/experimental-default.js';
 
 const FACE_OFFSETS = [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]];
+const REPLACEABLE_PLANTS = new Set([31, 32, 106, 175]);
 
 export async function loadLocalWorld(options, emit, openStore = openCheckpointStore) {
   const store = await openStore(WORLD_DATABASE);
@@ -20,11 +22,22 @@ export async function loadLocalWorld(options, emit, openStore = openCheckpointSt
     }
 
     let record;
+    let preparedTerrain;
     if (options.create) {
       const state = newWorldState(options);
-      state.spawn = createTerrain(state).spawn();
-      state.position = state.spawn;
-      record = await store.createWorld(state);
+      if (state.generator?.id === EXPERIMENTAL_DEFAULT_189.id) {
+        if (!EXPERIMENTAL_DEFAULT_189.enabled) throw new Error(EXPERIMENTAL_DEFAULT_189.reason);
+        ownership = await acquireWorldOwnership(state.id);
+        const generator = createTerrain({ ...state, edits: [] });
+        preparedTerrain = createExperimentalGrowingTerrain(generator, state, store);
+        state.spawn = await findSafeExperimentalSpawn(generator, preparedTerrain);
+        state.position = state.spawn;
+        record = await store.createWorld(state);
+      } else {
+        state.spawn = createTerrain(state).spawn();
+        state.position = state.spawn;
+        record = await store.createWorld(state);
+      }
     } else {
       record = await store.load(options.id ?? name);
       if (!record && !options.id) {
@@ -34,30 +47,32 @@ export async function loadLocalWorld(options, emit, openStore = openCheckpointSt
       }
       if (!record) throw new Error('This local world could not be found.');
       if (![1, 2, SAVE_VERSION].includes(record.state.version)) throw new Error('This world uses a different save format.');
+      if (record.state.generator?.id === EXPERIMENTAL_DEFAULT_189.id) {
+        if (!EXPERIMENTAL_DEFAULT_189.enabled) throw new Error(EXPERIMENTAL_DEFAULT_189.reason);
+        ownership = await acquireWorldOwnership(record.id);
+        record = await store.load(record.id);
+        if (!record || record.state.generator?.id !== EXPERIMENTAL_DEFAULT_189.id) throw new Error('The world changed while acquiring ownership.');
+      }
     }
-
-    if (record.state.generator?.id === EXPERIMENTAL_DEFAULT_189.id) {
-      ownership = await acquireWorldOwnership(record.id);
-      record = await store.load(record.id);
-      if (!record || record.state.generator?.id !== EXPERIMENTAL_DEFAULT_189.id) throw new Error('The world changed while acquiring ownership.');
-    }
-    return new LocalWorldSession(store, record, emit, ownership);
+    return new LocalWorldSession(store, record, emit, ownership, preparedTerrain);
   } catch (error) {
-    await ownership?.release();
-    store.close();
+    try { store.close(); } finally { await ownership?.release(); }
     if (error.name === 'ConstraintError') throw new Error('A world with this name already exists.');
     throw error;
   }
 }
 
 class LocalWorldSession {
-  constructor(store, record, emit, ownership) {
+  constructor(store, record, emit, ownership, preparedTerrain) {
     this.store = store;
     this.ownership = ownership;
     this.record = record;
     this.emit = emit;
     const generator = createTerrain(record.state.version === SAVE_VERSION ? { ...record.state, edits: [] } : record.state);
-    this.terrain = record.state.version === SAVE_VERSION ? new PersistedTerrain(generator, record.state, store) : generator;
+    const isExperimental = record.state.generator?.id === EXPERIMENTAL_DEFAULT_189.id;
+    this.terrain = preparedTerrain ?? (isExperimental
+      ? createExperimentalGrowingTerrain(generator, record.state, store)
+      : record.state.version === SAVE_VERSION ? new PersistedTerrain(generator, record.state, store) : generator);
     this.settings = record.state.version === 1 ? worldSettings({ worldType: 'terraces' }) : worldSettings(record.state.settings);
     this.spawn = record.state.spawn ?? generator.spawn();
     this.creation = creationOptions(record.state.creation);
@@ -146,6 +161,10 @@ class LocalWorldSession {
         loadedChunks: this.loaded.size,
         blockEdits: this.terrain.editCount,
         cachedBaseBytes: this.terrain.cachedBytes ?? 0,
+        generationOps: this.terrain.population?.metrics?.operations ?? 0,
+        generationPopulations: this.terrain.population?.metrics?.populations ?? 0,
+        generationMs: this.terrain.population?.metrics?.populationMs ?? 0,
+        cachedBiomes: this.terrain.generator?.biomeCache?.size ?? 0,
       } });
     }
   }
@@ -177,7 +196,10 @@ class LocalWorldSession {
   }
 
   async streamChunks(limit) {
-    for (const [key, { x, z }] of this.chunks.splice(0, limit)) {
+    const batchStart = performance.now();
+    for (let count = 0; count < limit && this.chunks.length; count++) {
+      const [key, { x, z }] = this.chunks.shift();
+      if (this.loaded.has(key)) continue;
       const start = performance.now();
       await this.terrain.prepare?.(x, z);
       if (this.stopping) return;
@@ -190,6 +212,7 @@ class LocalWorldSession {
       this.metrics.peakChunkMs = Math.max(this.metrics.peakChunkMs, elapsed);
       this.send(packet);
       this.loaded.set(key, { x, z });
+      if (this.terrain.population && performance.now() - batchStart > 80) break;
     }
   }
 
@@ -205,6 +228,7 @@ class LocalWorldSession {
       [position.x - 0.31, position.z + 0.31], [position.x + 0.31, position.z + 0.31]]) {
       if (this.terrain.contains(x, z)) await this.terrain.prepare?.(Math.floor(x / 16), Math.floor(z / 16));
     }
+    this.flushGenerationUpdates();
     if (collides(this.terrain, position)) {
       this.send(positionPacket(this.position));
       return;
@@ -228,6 +252,7 @@ class LocalWorldSession {
     const { x, y, z } = target;
     if (!this.terrain.contains(x, z) || y < this.terrain.minY || y > this.terrain.maxY) return;
     await this.terrain.prepare?.(Math.floor(x / 16), Math.floor(z / 16));
+    this.flushGenerationUpdates();
     const oldState = this.terrain.get(x, y, z);
     if (allowed && state !== oldState) {
       this.terrain.set(x, y, z, state);
@@ -251,14 +276,16 @@ class LocalWorldSession {
     for (const point of [target, next]) {
       if (this.terrain.contains(point.x, point.z)) await this.terrain.prepare?.(Math.floor(point.x / 16), Math.floor(point.z / 16));
     }
+    this.flushGenerationUpdates();
     const item = this.hotbar[this.selectedSlot];
     const [x0, y0, z0, x1, y1, z1] = playerBox(this.position);
     const occupied = next.x < x1 && next.x + 1 > x0 && next.y < y1 &&
       next.y + 1 > y0 && next.z < z1 && next.z + 1 > z0;
     const clicked = this.terrain.get(x, y, z);
     const existing = this.terrain.get(next.x, next.y, next.z);
+    const replaceable = existing === 0 || isWater(existing) || REPLACEABLE_PLANTS.has(existing >> 4) || existing === (78 << 4);
     const allowed = !!item && this.editable(next) && this.withinReach(target) && !occupied &&
-      clicked !== 0 && !isWater(clicked) && (existing === 0 || isWater(existing));
+      clicked !== 0 && !isWater(clicked) && replaceable;
     return this.edit(next, item ? (item.id << 4) | item.damage : 0, allowed);
   }
 
@@ -320,10 +347,10 @@ class LocalWorldSession {
     clearInterval(this.timer);
     try {
       await this.streaming;
+      await this.terrain.preparing?.catch(() => {});
       await this.save();
     } finally {
-      this.store.close();
-      await this.ownership?.release();
+      try { this.store.close(); } finally { await this.ownership?.release(); }
     }
   }
 }

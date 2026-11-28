@@ -1,4 +1,4 @@
-export const WORLD_TYPES = ['natural', 'flat', 'highlands', 'wide', 'custom', 'terraces'];
+export const WORLD_TYPES = ['natural', 'flat', 'highlands', 'wide', 'custom', 'terraces', 'defaultExperimental'];
 
 export const WORLD_FEATURES = ['trees', 'lakes', 'caverns', 'landmarks', 'starterMaterials'];
 
@@ -11,7 +11,7 @@ export const TERRAIN_PARAMETERS = [
 
 export function featureAvailable(worldType, feature) {
   if (feature === 'starterMaterials') return true;
-  if (worldType === 'terraces') return false;
+  if (worldType === 'terraces' || worldType === 'defaultExperimental') return false;
   if (worldType === 'flat' && feature === 'lakes') return false;
   return true;
 }
