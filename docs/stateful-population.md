@@ -1,5 +1,78 @@
 # Stateful population research checkpoint
 
+## Growing storage checkpoint (`797d96b`)
+
+The new `GrowingPopulation189` replaces the full-arena storage contract for
+growing research worlds; the bounded executor below remains available for its
+original fixtures. Playable registration is still disabled.
+
+IndexedDB schema 4 adds `world-generation-columns` and
+`world-generation-meta`; older stores, generator IDs and checkpoints are retained.
+Column keys include world, generator, stage, X and Z. Metadata holds the exact
+seed, revision/sequence, world RNG state, retained decorator fields, a durable
+pending-source queue and the latest operation diagnostics. It does not contain
+a growing history of generated columns or completed coordinates.
+
+Each column carries terrain-admission readiness, population status, completion
+sequence, generated section/light arrays, heightmap/allocation/biome arrays,
+and its deferred fluid/drop observations. A source executes in a private 4×4
+window restored from current persisted generation state over immutable terrain.
+Only columns whose generated state, cached light, height, allocation or deferred
+effects changed are written (plus the source completion record). Whole columns
+are stored when affected; this is not a sparse per-block encoding. All affected
+columns and metadata commit in one compare-and-swap transaction across the two
+new stores. A transaction abort rolls back both stores. Unchanged old columns
+are neither loaded globally nor rewritten.
+
+Explicit terrain requests use the validated source/west/north/northwest
+admission order and 2×2 readiness. Pending admissions commit before execution;
+`executing` is transient session state and `completed` is durable column state.
+On interruption, pending work is retried from durable state. Silent read-halo
+preparation never admits additional sources. Per-session calls serialize and
+conflicting sessions retry from the latest global metadata revision.
+
+The new host keeps 16 logical columns resident per population operation and
+retains no global prepared/completed set. `GrowingTerrain189` adds a 64-column
+immutable base LRU and 384-column generated LRU. Player edits remain the existing
+separate overlay. Reopening continues the existing logical-session contract for
+RNG and decorator instances; native restart parity remains unverified.
+
+Seven new passing tests cover exploration past 64 columns, unchanged old-column
+revisions, reopen/duplicate prevention, queued failure recovery, light-only
+neighbor changes, deferred updates, adapter edit preservation, all six native
+readiness sequences through durable admission, multi-store rollback and
+concurrent sessions. Tests use fake IndexedDB; they are not browser benchmarks.
+
+### Streaming integration and confirmed blocker
+
+The adapter invalidates/refreshes previously cached columns affected by its own
+commits. The server has an optional packet-refresh hook for those columns,
+including ticks without a newly requested chunk. No existing generator uses the
+adapter; no new world-creation option is registered.
+
+Cross-session cache coherency is **not yet safe**. Reproduce with:
+
+```sh
+node tools/probe-growing-session-coherence.mjs
+```
+
+Two adapters share one database. Session A caches column (0,0); session B prepares
+a 2×2 neighborhood and populates it. Durable state becomes 64 at (0,70,0), but A
+still reads 0 and receives no invalidation notification. The diagnostic returns
+nonzero; this mismatch is not accepted by a passing golden test. CAS protects
+durable state but cannot alone refresh another worker's transmitted chunks.
+A revision-feed/polling or enforced single-session contract must close this gap
+before playable registration.
+
+Browser spawn, entry, exploration, packet-refresh behavior, save/reopen and
+frame/worker/storage measurements have **not** been validated for the new path.
+A native generator adapter, safe spawn selection and complete registration are
+still absent. Browser creation is deliberately disabled while this confirmed
+streaming-coherency failure remains. No structures, dungeon/spawning algorithms
+or runtime fluid engine are added.
+
+## Earlier bounded research contract
+
 Implementation: `0938c67`; native readiness observations/model: `119bf4d`. This is a bounded research executor, not a playable world generator.
 The proposed distinct ID is `java-1.8.9-default-experimental-stateful-v1`;
 `EXPERIMENTAL_DEFAULT_189.enabled` is false. The reserved final identifier and
