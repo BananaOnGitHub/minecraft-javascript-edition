@@ -10,6 +10,7 @@ import {openCheckpointStore} from '../client/js/local-world/checkpoints.js';
 import {chunkPacket} from '../client/js/local-world/protocol.js';
 import {decodePacket} from '../client/js/net/packets.js';
 import {World} from '../client/js/world/world.js';
+import {buildSlice,SliceWorld} from '../client/js/world/slice.js';
 import {initBlocks} from '../client/js/world/blocks.js';
 import {Mesher} from '../client/js/render/mesher.js';
 import {updateLightmap} from '../client/js/render/sky.js';
@@ -106,4 +107,49 @@ test('gameplay light is derived separately, persists edits and refreshes untouch
   assert.deepEqual(after,before,'deriving presentation light never rewrites persisted generation state or RNG');
   assert.ok(terrain.lightInputs.size<=64);assert.ok(terrain.gameplay.size<=384);
   store.close();
+});
+
+
+const caveFixture=JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/vanilla-189-cave-light.json.gz',import.meta.url))));
+test('reported negative-coordinate cave matches native settled light, including its real weak daylight',()=>{
+  assert.equal(caveFixture.cases.length,3);
+  const gen=new DefaultTerrain189(-321252946616194827n);
+  for(const c of caveFixture.cases){const cols=columns(c);
+    for(const [key,column]of cols){const [x,z]=key.split(',').map(Number);assert.deepEqual(gen.carvedColumn(x,z).states,column.states,key);}
+    compare(gameplayLight189(c.x,c.z,(x,z)=>cols.get(`${x},${z}`)),c.settled,c.name);
+  }
+  const c=caveFixture.cases[0];
+  assert.deepEqual(c.settled.find(p=>p[0]===13&&p[1]===60&&p[2]===2),[13,60,2,0,0,0]);
+  assert.deepEqual(c.settled.find(p=>p[0]===13&&p[1]===61&&p[2]===10),[13,61,10,0,1,0]);
+  assert.deepEqual(c.settled.find(p=>p[0]===13&&p[1]===61&&p[2]===11),[13,61,11,0,2,0]);
+});
+
+test('reported cave remains dark through protocol, negative-coordinate worker slices and face-light samples',()=>{
+  initBlocks(JSON.parse(readFileSync(new URL('../client/data/blocks.json',import.meta.url),'utf8')),null);
+  const gen=new DefaultTerrain189(-321252946616194827n),cols=new Map(),world=new World();
+  const load=(x,z)=>{const key=`${x},${z}`;if(!cols.has(key))cols.set(key,gen.carvedColumn(x,z));return cols.get(key);};
+  for(let z=3;z<=5;z++)for(let x=-6;x<=-4;x++){
+    const column=gameplayLight189(x,z,load),p=decodePacket(chunkPacket({minY:0,column:()=>column},x,z));
+    world.loadChunk(x,z,true,p.bitMap,p.chunkData,0,true);
+  }
+  const slice=new SliceWorld(buildSlice(world,-5,3,4));
+  for(const [x,y,z,state,sky,block]of caveFixture.cases[0].settled){
+    if(y>65)continue;
+    assert.equal(slice.getState(-80+x,y,64+z),state);
+    assert.equal(slice.getLight(-80+x,y,64+z),(sky<<4)|block);
+  }
+  const mesh=new Mesher(slice,{atlas:{uv:()=>null}});
+  assert.equal(mesh.lightAt(-67,60,66),0);
+  // All nearby air face samples (including AO diagonals) remain unlit.
+  for(let y=57;y<=63;y++)for(let z=64;z<=70;z++)for(let x=-71;x<=-65;x++){
+    if(slice.getState(x,y,z)!==0)continue;
+    for(let dir=0;dir<6;dir++){
+      const out=Array.from({length:4},()=>new Float32Array(3));mesh.faceCorners(x,y,z,dir,out);
+      for(const corner of out){assert.equal(corner[1],0,`${x},${y},${z} sky`);assert.equal(corner[2],0,`${x},${y},${z} block`);}
+    }
+  }
+  // Vanilla-style lightmaps deliberately retain a dim ambient floor at zero
+  // block/sky light. Brighter albedo can remain visible without a light leak.
+  const map=new Uint8Array(1024);updateLightmap(map,{sun:1,dimension:0,torchFlicker:0,gamma:.5});
+  assert.deepEqual([...map.subarray(0,3)],[25,25,25]);
 });

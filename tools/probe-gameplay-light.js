@@ -10,6 +10,7 @@ function captureBiomeDecoration(world,setup,getEncoded,rawSet,makeRand) {
  {name:'reported-west-south-overhang',seed:'-321252946616194827',cx:6,cz:1,natural:true},
  {name:'roof-positive',cx:400,cz:400},{name:'roof-negative',cx:-400,cz:-400},
  {name:'transparent',cx:410,cz:410}];
+ if(featureMode==='cave-light')specs=[{name:'reported-cave',seed:'-321252946616194827',cx:-5,cz:4,natural:true},{name:'cave-east-border',seed:'-321252946616194827',cx:-4,cz:4,natural:true},{name:'cave-north-border',seed:'-321252946616194827',cx:-5,cz:3,natural:true}];
  for each(var spec in specs){
   var cx=spec.cx,cz=spec.cz,cols=[],chunks=[],provider=spec.natural?new Provider(world,java.lang.Long.parseLong(spec.seed),true,''):null;
   for(var dz=-2;dz<=2;dz++)for(var dx=-2;dx<=2;dx++){var c=world['a(int,int)']((cx+dx)|0,(cz+dz)|0);populated.setBoolean(c,true);}
@@ -33,7 +34,7 @@ function captureBiomeDecoration(world,setup,getEncoded,rawSet,makeRand) {
    for(var sy=0;sy<16;sy++)if(dst[sy]){var a=dst[sy].g(),runs=[],last=-1,n=0;for(var i=0;i<4096;i++){var s=String(a[i]).charCodeAt(0);if(s===last)n++;else{if(n)runs.push(last,n);last=s;n=1;}}if(n)runs.push(last,n);sections.push({sy:sy,runs:runs});}
    cols.push({x:cx+dx,z:cz+dz,sections:sections});
   }
-  function observe(){var points=[];for(var z=0;z<16;z++)for(var x=0;x<16;x++)for(var y=60;y<=90;y++){
+  function observe(){var points=[];for(var z=0;z<16;z++)for(var x=0;x<16;x++)for(var y=featureMode==='cave-light'?50:60;y<=(featureMode==='cave-light'?76:90);y++){
    var p=new Pos((cx*16+x)|0,y|0,(cz*16+z)|0);points.push([x,y,z,getEncoded(cx*16+x,y,cz*16+z),world.b(Sky.a,p),world.b(Sky.b,p)]);
   }return points;}
   var initial=observe();

@@ -1,0 +1,40 @@
+{
+  "reference": "Local unmodified Minecraft Java 1.8.9, isolated cave-light behavioral observations",
+  "seed": "-321252946616194827",
+  "cases": [
+    {
+      "name": "reported-cave",
+      "stage": "settled",
+      "x": -5,
+      "z": 4,
+      "samples": 6912,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    },
+    {
+      "name": "cave-east-border",
+      "stage": "settled",
+      "x": -4,
+      "z": 4,
+      "samples": 6912,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    },
+    {
+      "name": "cave-north-border",
+      "stage": "settled",
+      "x": -5,
+      "z": 3,
+      "samples": 6912,
+      "skyMismatches": 0,
+      "blockMismatches": 0,
+      "firstDifference": null
+    }
+  ],
+  "naturalSkyChangedByMaintenance": 68,
+  "samples": 20736,
+  "skyMismatches": 0,
+  "blockMismatches": 0
+}

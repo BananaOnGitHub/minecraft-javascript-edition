@@ -2,7 +2,8 @@
 import {readFile,writeFile} from 'node:fs/promises';
 import {gunzipSync} from 'node:zlib';
 import {gameplayLight189} from '../client/js/local-world/generation/v1_8_9/gameplay-light.js';
-const f=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-gameplay-light.json.gz',import.meta.url))));
+const cave=process.argv.includes('--cave');
+const f=JSON.parse(gunzipSync(await readFile(new URL(cave?'./fixtures/vanilla-189-cave-light.json.gz':'./fixtures/vanilla-189-gameplay-light.json.gz',import.meta.url))));
 const report={reference:f.reference,seed:f.cases[0].seed,cases:[],naturalSkyChangedByMaintenance:0,samples:0,skyMismatches:0,blockMismatches:0};
 for(const c of f.cases){
   if(c.seed)report.naturalSkyChangedByMaintenance+=c.initial.reduce((n,p,i)=>n+Number(p[4]!==c.maintained[i][4]),0);
@@ -22,6 +23,6 @@ for(const c of f.cases){
     console.log(c.name,stage,result.skyMismatches,result.blockMismatches,`${(performance.now()-start).toFixed(1)} ms`);
   }
 }
-await writeFile(new URL('./fixtures/gameplay-light-report.json',import.meta.url),JSON.stringify(report,null,2)+'\n');
+await writeFile(new URL(cave?'./fixtures/cave-light-report.json':'./fixtures/gameplay-light-report.json',import.meta.url),JSON.stringify(report,null,2)+'\n');
 console.log('Total',report.samples,'sky mismatches',report.skyMismatches,'block mismatches',report.blockMismatches);
 if(report.skyMismatches||report.blockMismatches)process.exitCode=1;

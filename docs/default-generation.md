@@ -18,6 +18,13 @@ save/reopen tests are included. See [gameplay-lighting.md](gameplay-lighting.md)
 Regression checkpoint: **64/64 generation**, **99/99 local worlds**.
 Rendered browser confirmation remains outstanding (automation connection refused).
 
+The follow-up cave report at `(-67,60,66)` has native sky=0/block=0 and
+matches through protocol, worker slice and AO sampling. All 20,736 additional
+native samples agree; no leak was reproduced and production lighting is
+unchanged. The lightmap's ambient floor explains why pale surfaces can remain
+visible at zero light. Latest suites: **66/66 generation**, **101/101 local
+worlds**. See the cave section in the lighting document.
+
 ## Creative-flight stability correction
 
 `1be7c08` corrects zero-length large-oak limbs that produced NaN coordinates

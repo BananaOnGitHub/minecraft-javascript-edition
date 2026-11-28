@@ -31,6 +31,41 @@ propagation. The client trusts incoming chunk light, so these zeros survived int
 AO and the lightmap. The nibble packing, block/sky ordering and lightmap axes were
 correct; changing gamma, AO or face shading would hide the missing server update.
 
+## Reported cave check at (-67,60,66)
+
+A second capture uses the same seed around chunks `(-5,4)`, `(-4,4)` and
+`(-5,3)`, sampling Y=50..76. The three prepared-terrain cases match
+**20,736/20,736 skylight and block-light samples each**. Independent carved
+states match every native input column, including the negative-coordinate
+chunk boundaries. This is a comparison on equivalent unpopulated terrain, not
+a dump of the user's live IndexedDB or full vanilla population.
+
+| Position | Native sky / block | Independent sky / block |
+| --- | --- | --- |
+| -67,60,66 (reported position) | 0 / 0 | 0 / 0 |
+| -67,61,74 | 1 / 0 | 1 / 0 |
+| -67,61,75 | 2 / 0 | 2 / 0 |
+
+The protocol/client test also follows the region through `buildSlice` and
+`SliceWorld`, rather than sampling only the client World directly. Air/AO
+samples around the reported camera position remain sky=0, block=0; no added
+light is reproduced in the meshing path. The weak skylight farther south is
+present in the native reference too.
+
+The existing lightmap keeps a nonzero ambient floor even at light levels 0/0:
+its RGB entry is 14/14/14 at gamma=0 and 25/25/25 at the default gamma=0.5.
+Material albedo and face/AO shading can therefore make pale sandstone appear
+brighter than nearby stone without a nonzero light value. The screenshot is
+consistent with this behavior. No production lighting or renderer adjustment
+was made for this report; the user's exact rendered save has not been inspected.
+
+Reproduce the numerical comparison with
+`node tools/compare-gameplay-light.mjs --cave`; capture mode `cave-light` uses
+the same disposable reference infrastructure. Results are recorded separately
+in `tools/fixtures/cave-light-report.json`, preserving the original overhang
+fixture and report. Regression checkpoint: **66/66 generation**, **101/101
+local worlds**.
+
 ## Implementation and lifecycle
 
 `gameplay-light.js::gameplayLight189` derives two packed nibble arrays from the
