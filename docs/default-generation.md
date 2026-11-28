@@ -5,6 +5,20 @@ Its reserved identifier is `java-1.8.9-default-v1`. It is under development and
 is not registered as a playable generator yet. Existing `landscape-v1`, flat,
 and terrace worlds keep their original generators and saved columns.
 
+## Stateful population research
+
+A separate mutable executor and atomic IndexedDB journal now exist; see
+[stateful-population.md](stateful-population.md). They retain prior cross-chunk
+writes, light/allocation/height state, RNG and decorator fields, and source
+completion. Four actual provider RNG prefixes match up to the first unsupported
+dungeon interior draw. Six native chunk-provider preparation sequences also
+match the isolated readiness/admission model. Unsupported stages throw by default; explicit research
+skipping records diagnostics and does not claim population parity.
+
+The proposed experimental ID is disabled. Readiness integration, native restart
+semantics, growing-world journaling, and worker cache invalidation are blockers
+to safe playable registration. No saved worlds are migrated.
+
 ## Verified stages
 
 ### Isolated non-structure population features
@@ -82,7 +96,7 @@ no remaining first differences. See [generation-world.md](generation-world.md)
 for derivation, exact coverage and unverified cases. The host is not registered
 or connected to the order-independent population planner. Corrected lighting
 implementation: `c63ce74`. Current regressions:
-`test:default-generation` **43/43**, `test:local-worlds` **70/70**.
+`test:default-generation` **51/51**, `test:local-worlds` **78/78**.
 
 `Biomes189` implements the Default climate, biome, Hills, mutation, shore,
 river, smoothing, and legacy Voronoi layer graph. Scale 4 returns the biome

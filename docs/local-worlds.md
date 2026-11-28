@@ -95,3 +95,14 @@ Remaining work is explicit:
 4. Complete survival inventory, drops, damage, crafting, hunger and hardcore death semantics.
 5. Profile generation I/O, cache retention and frame times during sustained browser exploration.
 6. Add browser crash-recovery, quota-exhaustion and cross-tab tests beyond the in-memory IndexedDB regression tests.
+
+## Disabled stateful Default research path
+
+A separate mutable population executor and atomic generation journal are
+implemented but are not connected to playable worker streaming. The proposed
+`java-1.8.9-default-experimental-stateful-v1` ID remains disabled. The journal
+does not alter player edits or checkpoint revisions. Native readiness prefixes
+and persistence infrastructure tests do not establish safe growing-world
+streaming or native restart semantics. See [stateful-population.md](stateful-population.md)
+for the precise blockers and validation. Existing terrain selections and save
+IDs are unchanged; no automatic migration is performed.

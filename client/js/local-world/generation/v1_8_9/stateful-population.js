@@ -42,8 +42,11 @@ export class StatefulPopulation189 {
     // Admission order is intentional, not coordinate sorting or order independence.
     const next=this.tail.then(()=>this.run(x,z));this.tail=next.catch(()=>{});return next;
   }
-  async context(record) {
+  validateConfiguration(record) {
     if(record&&(record.format!==1||record.seed!==this.seed.toString()||JSON.stringify(record.bounds)!==JSON.stringify(this.bounds)))throw new Error('Stateful generation configuration mismatch');
+  }
+  async context(record) {
+    this.validateConfiguration(record);
     const bases=new Map();
     for(let x=this.bounds.minChunkX;x<=this.bounds.maxChunkX;x++)for(let z=this.bounds.minChunkZ;z<=this.bounds.maxChunkZ;z++)bases.set(key(x,z),await this.loadBase(x,z));
     const worldRandom=new JavaRandom(this.seed);if(record)worldRandom.seed=BigInt(record.worldRandom);
@@ -57,6 +60,7 @@ export class StatefulPopulation189 {
     populationSeed189(this.seed,x,z);
     if(x-1<this.bounds.minChunkX||x+2>this.bounds.maxChunkX||z-1<this.bounds.minChunkZ||z+2>this.bounds.maxChunkZ)throw new RangeError('Source requires a prepared four-by-four halo');
     const previous=await this.journal();
+    this.validateConfiguration(previous);
     if(previous?.completed.some(p=>p[0]===x&&p[1]===z))return previous;
     const context=await this.context(previous),featureRandom=new JavaRandom(populationSeed189(this.seed,x,z)),events=[];
     const result=this.execute({...context,featureRandom,x,z,events});

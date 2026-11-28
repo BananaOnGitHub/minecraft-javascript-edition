@@ -24,6 +24,7 @@ test('stateful calls observe previous cross-chunk writes and preserve explicit o
   const {store,options,engine}=await setup(execute);
   await Promise.all([engine.populate(-1,-1),engine.populate(0,0)]);
   const before=await engine.journal();assert.equal(before.revision,2);assert.deepEqual(before.completed,[[-1,-1],[0,0]]);
+  await assert.rejects(new StatefulPopulation189({...options,seed:8n}).populate(0,0),/configuration mismatch/);
   const reopened=new StatefulPopulation189(options),context=await reopened.context(before);
   assert.equal(context.world.get(0,70,0),32);assert.equal(context.world.fluids.scheduled.length,2);
   assert.deepEqual((await reopened.populate(0,0)),before,'completed source must not run twice');
