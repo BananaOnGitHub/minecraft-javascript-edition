@@ -90,7 +90,7 @@ Runtime.getRuntime().addShutdownHook(new Thread(function() {
       }
     }
 
-    if(featureMode.indexOf('biomes')===0||featureMode==='world-services'||featureMode==='lighting-timing'||featureMode==='population-seed'||featureMode==='lakes'||featureMode==='freeze-services'||featureMode==='freeze-pass'||featureMode==='snow-support'||featureMode==='climate-edges'||featureMode==='biome-climate'||featureMode==='natural-lakes'||featureMode==='population-prefix'||featureMode==='population-readiness') {
+    if(featureMode.indexOf('biomes')===0||featureMode==='world-services'||featureMode==='lighting-timing'||featureMode==='population-seed'||featureMode==='lakes'||featureMode==='freeze-services'||featureMode==='freeze-pass'||featureMode==='snow-support'||featureMode==='climate-edges'||featureMode==='biome-climate'||featureMode==='natural-lakes'||featureMode==='population-prefix'||featureMode==='population-readiness'||featureMode==='oak-limb') {
       load(auxiliaryProbe);
       var result=captureBiomeDecoration(world,setupGrass,getEncoded,rawSet,makeRand);
       var stream=new java.util.zip.GZIPOutputStream(new java.io.FileOutputStream(fixtureOutput));

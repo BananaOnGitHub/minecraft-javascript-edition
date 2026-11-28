@@ -262,6 +262,35 @@ export function generateOakTree189(
 /**
  * 2. WorldGenBigTree (large branching oak)
  */
+export function generateBigOakLimb189(world, x1, y1, z1, x2, y2, z2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const dz = z2 - z1;
+  let maxAbs = Math.abs(dx);
+  if (Math.abs(dy) > maxAbs) maxAbs = Math.abs(dy);
+  if (Math.abs(dz) > maxAbs) maxAbs = Math.abs(dz);
+  // The native zero-length limb is a no-op. Never divide by zero and
+  // pass NaN block coordinates into world access.
+  if (maxAbs === 0) return;
+  const sx = dx / maxAbs;
+  const sy = dy / maxAbs;
+  const sz = dz / maxAbs;
+  for (let i = 0; i <= maxAbs; i++) {
+    const bx = Math.floor(0.5 + x1 + i * sx);
+    const by = Math.floor(0.5 + y1 + i * sy);
+    const bz = Math.floor(0.5 + z1 + i * sz);
+    const ax = Math.abs(bx - x1);
+    const az = Math.abs(bz - z1);
+    const m = Math.max(ax, az);
+    let axisMeta = 0;
+    if (m > 0) {
+      if (ax === m) axisMeta = 4;
+      else if (az === m) axisMeta = 8;
+    }
+    setBlockWithLeafBreak(world, bx, by, bz, LOG_OAK | axisMeta);
+  }
+}
+
 export class BigOakTree189 {
   constructor() { this.heightLimit = 0; }
 
@@ -383,31 +412,7 @@ export function generateBigOakTree189(world, rand, x, y, z, instance = { heightL
     }
   }
 
-  const limb = (x1, y1, z1, x2, y2, z2) => {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const dz = z2 - z1;
-    let maxAbs = Math.abs(dx);
-    if (Math.abs(dy) > maxAbs) maxAbs = Math.abs(dy);
-    if (Math.abs(dz) > maxAbs) maxAbs = Math.abs(dz);
-    const sx = dx / maxAbs;
-    const sy = dy / maxAbs;
-    const sz = dz / maxAbs;
-    for (let i = 0; i <= maxAbs; i++) {
-      const bx = Math.floor(0.5 + x1 + i * sx);
-      const by = Math.floor(0.5 + y1 + i * sy);
-      const bz = Math.floor(0.5 + z1 + i * sz);
-      const ax = Math.abs(bx - x1);
-      const az = Math.abs(bz - z1);
-      const m = Math.max(ax, az);
-      let axisMeta = 0;
-      if (m > 0) {
-        if (ax === m) axisMeta = 4;
-        else if (az === m) axisMeta = 8;
-      }
-      setBlockWithLeafBreak(world, bx, by, bz, LOG_OAK | axisMeta);
-    }
-  };
+  const limb = (...coordinates) => generateBigOakLimb189(world, ...coordinates);
 
   limb(x, y, z, x, trunkTopY, z);
   if (trunkSize === 2) {
