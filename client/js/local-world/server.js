@@ -5,12 +5,15 @@ import { MATERIALS, PLACEABLE_MATERIALS, createTerrain, collides, isWater, playe
 import { worldSettings } from './world-settings.js';
 import { SAVE_VERSION, creationOptions, newWorldState } from './world-metadata.js';
 import { PersistedTerrain } from './persisted-terrain.js';
+import { acquireWorldOwnership } from './world-ownership.js';
+import { EXPERIMENTAL_DEFAULT_189 } from './generation/v1_8_9/stateful-population.js';
 
 const FACE_OFFSETS = [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]];
 
 export async function loadLocalWorld(options, emit, openStore = openCheckpointStore) {
   const store = await openStore(WORLD_DATABASE);
   const { name } = options;
+  let ownership;
   try {
     if (!options.id && (typeof name !== 'string' || !name.trim() || name.length > 32)) {
       throw new Error('Enter a world name of up to 32 characters.');
@@ -33,8 +36,14 @@ export async function loadLocalWorld(options, emit, openStore = openCheckpointSt
       if (![1, 2, SAVE_VERSION].includes(record.state.version)) throw new Error('This world uses a different save format.');
     }
 
-    return new LocalWorldSession(store, record, emit);
+    if (record.state.generator?.id === EXPERIMENTAL_DEFAULT_189.id) {
+      ownership = await acquireWorldOwnership(record.id);
+      record = await store.load(record.id);
+      if (!record || record.state.generator?.id !== EXPERIMENTAL_DEFAULT_189.id) throw new Error('The world changed while acquiring ownership.');
+    }
+    return new LocalWorldSession(store, record, emit, ownership);
   } catch (error) {
+    await ownership?.release();
     store.close();
     if (error.name === 'ConstraintError') throw new Error('A world with this name already exists.');
     throw error;
@@ -42,8 +51,9 @@ export async function loadLocalWorld(options, emit, openStore = openCheckpointSt
 }
 
 class LocalWorldSession {
-  constructor(store, record, emit) {
+  constructor(store, record, emit, ownership) {
     this.store = store;
+    this.ownership = ownership;
     this.record = record;
     this.emit = emit;
     const generator = createTerrain(record.state.version === SAVE_VERSION ? { ...record.state, edits: [] } : record.state);
@@ -313,6 +323,7 @@ class LocalWorldSession {
       await this.save();
     } finally {
       this.store.close();
+      await this.ownership?.release();
     }
   }
 }

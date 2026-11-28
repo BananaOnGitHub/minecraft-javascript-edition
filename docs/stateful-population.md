@@ -195,3 +195,21 @@ Final checkpoint commands: `npm run test:default-generation` (51/51) and
 `npm run test:local-worlds` (78/78). The existing 140 independent biome calls,
 20 expanded world-service cases, 180 immediate-fluid cases, 56 lake calls and
 12 isolated snow passes remain in those suites. No fixture criteria were weakened.
+
+## Exclusive ownership preparation
+
+A worker-side `acquireWorldOwnership` helper requests an exclusive, per-world
+Web Lock with `ifAvailable`; a second holder receives a user-facing already-open
+error. Missing Web Locks fail closed. Different IDs use different lock names.
+The dormant experimental-ID path in `loadLocalWorld` obtains this lock before
+constructing a gameplay session, rereads the checkpoint under the lock, and
+releases it when session close finishes or session construction fails. The
+worker owns the lock for its lifetime. Existing world types are unaffected.
+
+Unit tests use a deterministic fake lock manager and cover contention, separate
+worlds, release/reopen, missing API, and refusal at the gameplay entry point.
+They do not establish browser Web Locks behavior or recovery after abrupt worker
+termination. Browser verification, new-world acquisition before creation,
+registration, and all gameplay integration remain outstanding. The low-level
+cross-session diagnostic remains unchanged. The lock does not protect direct
+low-level GrowingTerrain189 use; only the proposed gameplay entry path is guarded.

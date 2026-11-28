@@ -13,7 +13,9 @@ window. A dormant streaming adapter preserves player overlays and refreshes
 locally changed columns. See [stateful-population.md](stateful-population.md)
 for schema 4, rollback/retry, cache bounds and validation.
 
-The experimental ID remains disabled. A two-session diagnostic demonstrates
+The experimental ID remains disabled. A worker-side Web Locks ownership guard
+has been added for the proposed ID, but browser termination recovery and
+protected playable integration are not yet verified. A two-session diagnostic demonstrates
 that one adapter's cached/transmitted columns are not notified when a second
 session commits changes. Durable CAS is correct, but live cross-session cache
 coherency is not. Native registration/spawn and end-to-end browser validation
