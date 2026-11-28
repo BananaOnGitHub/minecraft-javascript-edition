@@ -68,3 +68,20 @@ export class StatefulPopulation189 {
     return this.store.commitStatefulPopulation(record,previous?.revision??0);
   }
 }
+
+// Isolated native chunk-load admission model. Callers must prepare a larger
+// read halo before executing the returned sources; this class performs no I/O.
+export class PopulationReadiness189 {
+  constructor(){this.prepared=new Set();this.admitted=new Set();}
+  preparedChunk(x,z) {
+    if(![x,z].every(Number.isInteger))throw new TypeError('Integer chunk coordinates required');
+    this.prepared.add(key(x,z));const ready=[];
+    for(const [cx,cz]of [[x,z],[x-1,z],[x,z-1],[x-1,z-1]]){
+      const source=key(cx,cz);
+      if(!this.admitted.has(source)&&[[cx,cz],[cx+1,cz],[cx,cz+1],[cx+1,cz+1]].every(([px,pz])=>this.prepared.has(key(px,pz)))){
+        this.admitted.add(source);ready.push([cx,cz]);
+      }
+    }
+    return ready;
+  }
+}

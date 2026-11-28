@@ -97,3 +97,15 @@ test('generation journal does not alter player checkpoints or their revisions',a
   const before=await store.load('world');await engine.populate(0,0);
   assert.deepEqual(await store.load('world'),before);store.close();
 });
+
+test('readiness admission order matches native server chunk-provider load sequences',async()=>{
+  const {readFile}=await import('node:fs/promises'),{gunzipSync}=await import('node:zlib');
+  const {PopulationReadiness189}=await import('../client/js/local-world/generation/v1_8_9/stateful-population.js');
+  const f=JSON.parse(gunzipSync(await readFile(new URL('./fixtures/vanilla-189-population-readiness.json.gz',import.meta.url))));
+  assert.equal(f.cases.length,6);
+  for(const c of f.cases){
+    const admission=new PopulationReadiness189(),actual=[];
+    for(const step of c.steps){actual.push(...admission.preparedChunk(c.x+step.loaded[0],c.z+step.loaded[1]));assert.deepEqual(actual,step.populations);}
+    const last=c.steps.at(-1).loaded;assert.deepEqual(admission.preparedChunk(c.x+last[0],c.z+last[1]),[]);
+  }
+});
