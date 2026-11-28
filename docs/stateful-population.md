@@ -201,15 +201,68 @@ Final checkpoint commands: `npm run test:default-generation` (51/51) and
 A worker-side `acquireWorldOwnership` helper requests an exclusive, per-world
 Web Lock with `ifAvailable`; a second holder receives a user-facing already-open
 error. Missing Web Locks fail closed. Different IDs use different lock names.
-The dormant experimental-ID path in `loadLocalWorld` obtains this lock before
-constructing a gameplay session, rereads the checkpoint under the lock, and
-releases it when session close finishes or session construction fails. The
-worker owns the lock for its lifetime. Existing world types are unaffected.
+The experimental-ID path in `loadLocalWorld` acquires this lock before
+creating a new experimental world or constructing a gameplay session/terrain
+adapter for an existing world (both ID-based and display-name-based lookups),
+rereads the checkpoint under the lock, and releases it after close/save or
+construction failure. Existing world types are unaffected.
 
 Unit tests use a deterministic fake lock manager and cover contention, separate
-worlds, release/reopen, missing API, and refusal at the gameplay entry point.
-They do not establish browser Web Locks behavior or recovery after abrupt worker
-termination. Browser verification, new-world acquisition before creation,
-registration, and all gameplay integration remain outstanding. The low-level
-cross-session diagnostic remains unchanged. The lock does not protect direct
-low-level GrowingTerrain189 use; only the proposed gameplay entry path is guarded.
+worlds, release/reopen, missing API, new-world pre-create failure leaving the
+store clean, and refusal at the gameplay entry point (both ID and name lookup).
+Real browser verification in Chromium and Firefox confirmed Web Locks refusal
+across tabs, concurrent flat-world execution, and lock recovery after abrupt
+tab termination. The low-level cross-session diagnostic (`probe-growing-session-coherence.mjs`)
+remains unchanged and still intentionally exits 1.
+
+## Experimental playable integration
+
+`EXPERIMENTAL_DEFAULT_189` (`java-1.8.9-default-experimental-stateful-v1`) is
+enabled as the `defaultExperimental` ("Default 1.8.9 (Exp.)") world type in
+`world-settings.js`, `world-metadata.js`, `terrain.js`, `i18n.js`, and
+`local-worlds.js`. The final `java-1.8.9-default-v1` ID remains unregistered
+and rejected.
+
+- `experimental-default.js` provides `ExperimentalDefaultTerrain189` around
+  `DefaultTerrain189.carvedColumn`, a bounded 256-chunk biome LRU (`biomeAt`),
+  `partialPopulationSequence189({ biomeAt, missing: 'skip-experimental' })`, and
+  `findSafeExperimentalSpawn` (scanning near origin for dry ground, preparing a
+  3x3 chunk neighborhood, and verifying safe non-fluid, non-colliding headroom
+  against populated terrain).
+- `GrowingPopulation189.read` and `protocol.js::chunkPacket` transmit persisted
+  generated `skyLight`, `blockLight`, and `lastSection` (covering light-only
+  halo sections), while `GrowingTerrain189.column` uses a worker-safe
+  `WorkerRelightWorld` backed by `BLOCK_PROPERTIES_189` to relight edited
+  columns across reloads. `collides()` in `terrain.js` allows passable 1.8.9
+  decoration blocks so player movement does not snag on plants or thin snow.
+- Known limitations remain explicit in UI and metadata: partial population
+  only (no major structures, dungeon interiors/loot, population-time animal
+  spawning, or full runtime fluid simulation; no automatic migration of old
+  worlds).
+
+### Verified results (latest integration checkpoint)
+
+- `npm run test:default-generation`: **58/58**
+- `npm run test:local-worlds`: **92/92** (includes `tools/test-experimental-default.mjs`
+  covering light/edit packet payloads, UI registration, ownership enforcement on
+  create/ID/name lookups, and seed-7 protocol 47 exploration past 64 chunks,
+  edits, save, reopen, and non-duplication)
+- Upstream regressions (`test-item-use-legacy`, `test-tls13-client`,
+  `test-account-blocklist-proxy`, `test-login-state-regressions`,
+  `test-login-transport`, `test-proxy-deployment`): **18/18**
+- Real Chromium UI/F3 verification (`http://localhost:3000`): created/entered
+  seed `7` (`Default 1.8.9 (Exp.)`, Creative) with limitation notice rendered,
+  safe spawn at `(-11, 63, -9)` in `Birch Forest`, `MultiplayerChunkCache: 289, 289`,
+  `171 fps` on WebGL 2.0, `/seed` -> `Seed 7`, clean `Save and Quit` & reopen,
+  cross-tab lock refusal (`This world is already open in another tab or worker.`),
+  coexisting `Flat` world (`0 33 0`), and `page.close()` lock recovery. (Interactive
+  pointer-lock movement and `page.evaluate` were restricted by the webview sandbox.)
+- Real Firefox WebDriver BiDi headless verification (`http://localhost:3000`):
+  created/entered seed `7` in `3206 ms` (`WebGL 2`, initial `storageUsage`
+  `~6.0 MB`), explored `244` unique chunks (`539` neighbor chunk refreshes,
+  `193` populations in `2383 ms`, `cachedBaseBytes` `~39.0 MB`, bounded
+  `cachedBiomes: 256`, `storageUsage` `~22.0 MB`), placed and dug blocks (`4`
+  total edits across spawn and destination), saved and reopened in `1110 ms` at
+  exact saved position with `0` duplicate populations and verified block states
+  (`1 << 4` above `0`), confirmed Tab-2 Web Locks refusal, `Flat` coexistence,
+  and abrupt tab-close recovery.
