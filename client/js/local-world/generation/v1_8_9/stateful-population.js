@@ -14,16 +14,16 @@ const key=(x,z)=>`${x},${z}`;
 export function snapshotDecorator189(decorator) {
   return {bigOaks:[...decorator.bigOaks].map(([id,t])=>[id,{heightLimit:t.heightLimit,leafDistanceLimit:t.leafDistanceLimit}]),giantKinds:[...decorator.giantKinds]};
 }
-function restoreDecorator(state) {
+export function restoreDecorator(state) {
   const decorator=new BiomeDecoration189();
   if(state){for(const [id,t]of state.bigOaks)decorator.bigOaks.set(id,Object.assign(new BigOakTree189(),t));decorator.giantKinds=new Map(state.giantKinds);}
   return decorator;
 }
-function snapshotWorld(world) {
+export function snapshotWorld(world) {
   return [...world.chunks.values()].map(c=>({x:c.x,z:c.z,allocated:c.allocated.slice(),heightMap:c.heightMap.slice(),biomes:c.biomes.slice(),
     sections:c.sections.map(s=>({blocks:s.blocks.slice(),skyLight:s.skyLight.slice(),blockLight:s.blockLight.slice()}))}));
 }
-function restoreWorld(world,columns) {
+export function restoreWorld(world,columns) {
   for(const data of columns??[]){const c=world._chunk(data.x,data.z);c.allocated.set(data.allocated);c.heightMap.set(data.heightMap);c.biomes.set(data.biomes);
     data.sections.forEach((s,i)=>{c.sections[i].blocks.set(s.blocks);c.sections[i].skyLight.set(s.skyLight);c.sections[i].blockLight.set(s.blockLight);c.sections[i].recount();});}
 }

@@ -4,16 +4,20 @@ export const WORLD_DATABASE = 'minecraftjs-terrace-worlds'
 const STORE = 'checkpoints'
 const CHUNKS = 'world-chunks'
 const POPULATION = 'world-population'
+const GENERATION = 'world-generation-columns'
+const GENERATION_META = 'world-generation-meta'
 
 export function openCheckpointStore(databaseName, indexedDB = globalThis.indexedDB) {
   return new Promise((resolve, reject) => {
     if (!indexedDB) throw new Error('Local world storage is unavailable in this browser')
-    const request = indexedDB.open(databaseName, 3)
+    const request = indexedDB.open(databaseName, 4)
     let blocked = false
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE, { keyPath: 'id' })
       if (!request.result.objectStoreNames.contains(CHUNKS)) request.result.createObjectStore(CHUNKS, { keyPath: ['worldId', 'x', 'z'] })
       if (!request.result.objectStoreNames.contains(POPULATION)) request.result.createObjectStore(POPULATION, { keyPath: ['worldId', 'generatorId', 'stageId', 'x', 'z'] })
+      if (!request.result.objectStoreNames.contains(GENERATION)) request.result.createObjectStore(GENERATION, { keyPath: ['worldId', 'generatorId', 'stageId', 'x', 'z'] })
+      if (!request.result.objectStoreNames.contains(GENERATION_META)) request.result.createObjectStore(GENERATION_META, { keyPath: ['worldId', 'generatorId', 'stageId'] })
     }
     request.onerror = () => reject(request.error)
     request.onblocked = () => {
@@ -169,6 +173,43 @@ function checkpointStore(database) {
           complete(read.result ?? record)
         }
       }, POPULATION)
+    },
+    loadGenerationWindow(identity, coordinates) {
+      return new Promise((resolve, reject) => {
+        const tx = database.transaction([GENERATION_META, GENERATION], 'readonly')
+        const result = { meta: null, columns: [] }
+        tx.oncomplete = () => resolve(result)
+        tx.onabort = () => reject(tx.error ?? new Error('Generation read aborted'))
+        const read = tx.objectStore(GENERATION_META).get(identity)
+        read.onsuccess = () => { result.meta = read.result ?? null }
+        for (const [x,z] of coordinates) {
+          const request = tx.objectStore(GENERATION).get([...identity,x,z])
+          request.onsuccess = () => { if (request.result) result.columns.push(request.result) }
+        }
+      })
+    },
+    commitGenerationWindow(meta, columns, expectedRevision) {
+      return new Promise((resolve, reject) => {
+        const tx = database.transaction([GENERATION_META, GENERATION], 'readwrite')
+        let failure, result
+        tx.oncomplete = () => resolve(result)
+        tx.onabort = () => reject(failure ?? tx.error ?? new Error('Generation commit aborted'))
+        const identity = [meta.worldId,meta.generatorId,meta.stageId]
+        const read = tx.objectStore(GENERATION_META).get(identity)
+        read.onsuccess = () => {
+          if ((read.result?.revision ?? 0) !== expectedRevision) {
+            failure = new Error('Growing population revision conflict'); tx.abort(); return
+          }
+          try {
+            result = { ...meta, revision: expectedRevision + 1 }
+            for (const column of columns) {
+              if (column.worldId !== meta.worldId || column.generatorId !== meta.generatorId || column.stageId !== meta.stageId) throw new Error('Generation column identity mismatch')
+              tx.objectStore(GENERATION).put({ ...column, revision: result.revision })
+            }
+            tx.objectStore(GENERATION_META).put(result)
+          } catch(error) { failure = error; tx.abort() }
+        }
+      })
     },
     commitStatefulPopulation(record, expectedRevision) {
       // The journal includes generation writes, lights, RNG/instance state and

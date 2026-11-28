@@ -120,6 +120,7 @@ class LocalWorldSession {
     this.streaming = streaming;
     try {
       await streaming;
+      this.flushGenerationUpdates();
     } catch (error) {
       clearInterval(this.timer);
       this.control('error', { message: error.message });
@@ -158,11 +159,19 @@ class LocalWorldSession {
       .sort((a, b) => a[1].distance - b[1].distance);
   }
 
+  flushGenerationUpdates(exclude) {
+    for (const changed of this.terrain.takeChangedColumns?.() ?? []) {
+      const key = changed.x + ',' + changed.z;
+      if (this.loaded.has(key) && key !== exclude) this.send(chunkPacket(this.terrain, changed.x, changed.z));
+    }
+  }
+
   async streamChunks(limit) {
     for (const [key, { x, z }] of this.chunks.splice(0, limit)) {
       const start = performance.now();
       await this.terrain.prepare?.(x, z);
       if (this.stopping) return;
+      this.flushGenerationUpdates(key);
       if (Math.abs(x - this.center[0]) > this.distance || Math.abs(z - this.center[1]) > this.distance) continue;
       const packet = chunkPacket(this.terrain, x, z);
       const elapsed = performance.now() - start;
