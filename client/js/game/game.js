@@ -412,6 +412,14 @@ export class Game {
     this.playerAffectedSections?.delete(key);this.renderer.removeSection(key);
   }
 
+  _dirtyChunkMeshNeighbors(cx,cz) {
+    for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++) {
+      if(!dx&&!dz)continue;
+      const c=this.world.getChunk(cx+dx,cz+dz);
+      if(c)for(let sy=0;sy<16;sy++)this._markSectionDirty(c.x,sy,c.z);
+    }
+  }
+
   // Console-only diagnostics, also reachable in bundled/offline clients.
   microprofile(options) { return capturePerformance(this,options); }
 
@@ -422,14 +430,10 @@ export class Game {
       void bitMap; void groundUp;
       for (let y = 0; y < 16; y++) this._markSectionDirty(c.x,y,c.z);
       this.tileRenderer.scanChunk(c);
-      // Neighbours that were already meshed need their edges rebuilt
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nk = (c.x + dx) + ',' + (c.z + dz);
-        if (this.meshedChunks.has(nk)) {
-          const n = w.getChunk(c.x + dx, c.z + dz);
-          if (n) for (let y = 0; y < 16; y++) if (n.sections[y]) this.dirty.add(n.x + ',' + y + ',' + n.z);
-        }
-      }
+      // Slices include a two-block halo, including diagonal columns and the
+      // sections above/below a changed section. In-flight builds must also be
+      // dirtied so their older snapshots cannot become the final mesh.
+      this._dirtyChunkMeshNeighbors(c.x, c.z);
     });
     w.on('chunkUnloaded', (c) => {
       this.renderer.invalidateVisibility();
@@ -437,6 +441,7 @@ export class Game {
       this.meshedChunks.delete(c.x + ',' + c.z);
       for (let y = 0; y < 16; y++) { const key=c.x+','+y+','+c.z;this.dirty.delete(key);this.inFlight.delete(key);this.buildTokens.delete(key); }
       this.tileRenderer.removeChunk(c.x, c.z);
+      this._dirtyChunkMeshNeighbors(c.x, c.z);
     });
     w.on('sectionDirty', (cx, sy, cz) => {
       if (!w.getChunk(cx, cz)) return;

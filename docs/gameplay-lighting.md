@@ -31,6 +31,26 @@ propagation. The client trusts incoming chunk light, so these zeros survived int
 AO and the lightmap. The nibble packing, block/sky ordering and lightmap axes were
 correct; changing gamma, AO or face shading would hide the missing server update.
 
+## Mesh invalidation follow-up
+
+The reported cave artifact disappeared after restarting and after toggling smooth
+lighting. Investigation found that chunk refreshes invalidated only cardinal
+neighbors, while smooth AO reads diagonal columns via the two-block worker slice
+halo. A diagonal mesh, including an in-flight job, could retain light sampled
+before the neighboring chunk arrived or refreshed. A settings change that toggles
+smooth lighting dirties all loaded sections, explaining the observed recovery.
+Minimum and Maximum share the same mesh mode, so switching directly between them
+does not itself trigger a rebuild.
+
+Incoming chunk updates and unloads now invalidate all eight adjacent columns,
+including sections above and below the changed section. Dirty in-flight results
+are discarded by the existing worker token and dirty checks. A regression drives
+a light-only diagonal update across a vertical section boundary, exercises
+unloading and in-flight builds, and confirms the smooth-light toggle behavior.
+This fixes the demonstrated stale-mesh mechanism; the exact original live mesh
+was not captured, so its specific source cannot be proven retrospectively.
+Generation-time and settled light calculations are unchanged.
+
 ## Reported cave check at (-67,60,66)
 
 A second capture uses the same seed around chunks `(-5,4)`, `(-4,4)` and
@@ -55,8 +75,8 @@ present in the native reference too.
 The existing lightmap keeps a nonzero ambient floor even at light levels 0/0:
 its RGB entry is 14/14/14 at gamma=0 and 25/25/25 at the default gamma=0.5.
 Material albedo and face/AO shading can therefore make pale sandstone appear
-brighter than nearby stone without a nonzero light value. The screenshot is
-consistent with this behavior. No production lighting or renderer adjustment
+brighter than nearby stone without a nonzero light value. The numeric samples alone do not account for a stale rendered mesh; see the
+mesh invalidation follow-up above. No production lighting or renderer adjustment
 was made for this report; the user's exact rendered save has not been inspected.
 
 Reproduce the numerical comparison with
