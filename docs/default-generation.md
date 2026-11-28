@@ -5,6 +5,15 @@ Its reserved identifier is `java-1.8.9-default-v1`. It is under development and
 is not registered as a playable generator yet. Existing `landscape-v1`, flat,
 and terrace worlds keep their original generators and saved columns.
 
+## Creative-flight stability correction
+
+`1be7c08` corrects zero-length large-oak limbs that produced NaN coordinates
+and a misleading missing-region error away from the origin. The captured
+failure did not require expanding the working window. See
+[flight-generation-failure.md](flight-generation-failure.md) for the actual
+source, stack, native observations, regression and browser-validation limits.
+Latest suites: **60/60 generation**, **95/95 local worlds**.
+
 ## Growing stateful population research
 
 `GrowingPopulation189` now uses chunk-addressable, atomic incremental generation
