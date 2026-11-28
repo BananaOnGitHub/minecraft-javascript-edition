@@ -1,4 +1,4 @@
-export const WORLD_TYPES = ['natural', 'flat', 'highlands', 'wide', 'custom', 'terraces', 'defaultExperimental'];
+export const WORLD_TYPES = ['defaultExperimental', 'flat', 'natural', 'highlands', 'wide', 'custom', 'terraces'];
 
 export const WORLD_FEATURES = ['trees', 'lakes', 'caverns', 'landmarks', 'starterMaterials'];
 

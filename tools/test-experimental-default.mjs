@@ -1,16 +1,21 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { IDBFactory } from 'fake-indexeddb';
 import { openCheckpointStore, WORLD_DATABASE } from '../client/js/local-world/checkpoints.js';
 import { GrowingTerrain189 } from '../client/js/local-world/generation/v1_8_9/growing-terrain.js';
 import { EXPERIMENTAL_DEFAULT_189 } from '../client/js/local-world/generation/v1_8_9/stateful-population.js';
+import { LandscapeTerrain } from '../client/js/local-world/landscape.js';
 import { chunkPacket } from '../client/js/local-world/protocol.js';
 import { loadLocalWorld } from '../client/js/local-world/server.js';
 import { createTerrain, collides } from '../client/js/local-world/terrain.js';
-import { newWorldState, validateGenerator } from '../client/js/local-world/world-metadata.js';
+import { newWorldState, validateGenerator, creationStatus } from '../client/js/local-world/world-metadata.js';
 import { WORLD_TYPES, worldSettings } from '../client/js/local-world/world-settings.js';
 import { CreateLocalWorldScreen } from '../client/js/gui/screens/local-worlds.js';
+import { MINECRAFTJS_EN } from '../client/js/gui/i18n.js';
 import { Chunk } from '../client/js/world/chunk.js';
+import { initBlocks, blocks } from '../client/js/world/blocks.js';
+import { resolveState } from '../client/js/world/blockstates.js';
 import { C, decodePacket } from '../client/js/net/packets.js';
 import { Connection } from '../client/js/net/connection.js';
 import { LocalWorldSocket } from '../client/js/local-world/socket.js';
@@ -174,18 +179,42 @@ test('experimental world type is registered without altering legacy generators o
     generator: { id: 'java-1.8.9-default-v1', version: 1, configuration: null },
   }), /unavailable generator/);
 
-  // UI selection cycles to defaultExperimental cleanly and displays experimental notice
+  // UI creation defaults to defaultExperimental immediately, shows experimental notice, and clearly separates legacy presets
+  let createdOpts = null;
   const game = {
     gui: { width: 320, height: 240 },
     screens: { open(s) { this.current = s; s.buttons = []; s.fields = []; s.init(); } },
-    connectLocalWorld() {},
+    connectLocalWorld(opts) { createdOpts = opts; },
   };
   const create = new CreateLocalWorldScreen(game, null);
   game.screens.open(create);
-  create.buttons.find(b => b.id === 3).onClick(); // More options
-  const idx = WORLD_TYPES.indexOf('defaultExperimental');
-  for (let i = 0; i < idx; i++) create.buttons.find(b => b.id === 5).onClick();
   assert.equal(create.settings.worldType, 'defaultExperimental');
+  assert.equal(create.buttons.find(b => b.id === 3) !== undefined, true);
+  assert.ok(creationStatus(create.settings, create.creation).some(m => m.startsWith('Experimental 1.8.9 Default:')));
+
+  create.buttons.find(b => b.id === 0).onClick();
+  assert.equal(createdOpts.settings.worldType, 'defaultExperimental');
+  assert.equal(newWorldState(createdOpts).generator.id, 'java-1.8.9-default-experimental-stateful-v1');
+
+  const cycled = new CreateLocalWorldScreen(game, null);
+  game.screens.open(cycled);
+  cycled.buttons.find(b => b.id === 3).onClick(); // More options
+  assert.equal(cycled.settings.worldType, 'defaultExperimental');
+  assert.equal(MINECRAFTJS_EN['minecraftjs.local.terrain.defaultExperimental'], 'Default 1.8.9 (Exp.)');
+  assert.equal(MINECRAFTJS_EN['minecraftjs.local.terrain.natural'], 'Legacy Landscape');
+  for (const legacyType of ['natural', 'highlands', 'wide', 'custom', 'terraces']) {
+    assert.ok(MINECRAFTJS_EN['minecraftjs.local.terrain.' + legacyType].startsWith('Legacy '));
+    assert.ok(creationStatus(worldSettings({ worldType: legacyType }), cycled.creation).some(m => m.startsWith('Legacy procedural ')));
+  }
+  const idx = WORLD_TYPES.indexOf('natural');
+  for (let i = 0; i < idx; i++) cycled.buttons.find(b => b.id === 5).onClick();
+  assert.equal(cycled.settings.worldType, 'natural');
+
+  // Existing worldSettings() without explicit worldType and legacy generator IDs remain preserved without migration
+  const legacyNatural = newWorldState({ name: 'SavedLegacy', seed: '7', settings: worldSettings() });
+  assert.equal(legacyNatural.settings.worldType, 'natural');
+  assert.equal(legacyNatural.generator.id, 'landscape-v1');
+  validateGenerator(legacyNatural);
 });
 
 test('ownership lock is acquired before experimental creation, enforced on ID and name lookups, and fails closed without Web Locks', async () => {
@@ -387,4 +416,83 @@ test('experimental Default seed 7 can be created, entered, explored beyond 64 co
   assert.equal(reopenChunk.getState(sx & 15, targetY, sz & 15), 0);
   await reopened.conn.close();
   store.close();
+});
+
+test('experimental Default never emits stonebrick (98) across Ice Plains Spikes / Extreme Hills, unlike legacy Natural landmarks', async () => {
+  initBlocks(JSON.parse(readFileSync(new URL('../client/data/blocks.json', import.meta.url), 'utf8')), null);
+  const locks = new FakeLocks();
+  const restoreLocks = withFakeLocks(locks);
+  try {
+    for (const { seed, centerCx, centerCz, expectedSpecial } of [
+      { seed: '6', centerCx: -35, centerCz: 32, expectedSpecial: new Map([[80, 'snow'], [78, 'snow_layer'], [174, 'packed_ice']]) },
+      { seed: '7', centerCx: -1, centerCz: -1, expectedSpecial: new Map([[97, 'stone_monster_egg'], [129, 'emerald_ore']]) },
+    ]) {
+      const idb = new IDBFactory();
+      const session = await loadLocalWorld({
+        name: `Trace ${seed}`,
+        seed,
+        settings: { worldType: 'defaultExperimental' },
+        create: true,
+      }, () => {}, name => openCheckpointStore(name, idb));
+
+      try {
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dz = -1; dz <= 1; dz++) {
+            await session.terrain.prepare(centerCx + dx, centerCz + dz);
+          }
+        }
+        const seenSpecial = new Set();
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dz = -1; dz <= 1; dz++) {
+            const cx = centerCx + dx, cz = centerCz + dz;
+            const raw = session.terrain.generator.column(cx, cz);
+            const persisted = await session.store.loadChunk(session.record.id, cx, cz);
+            const populated = session.terrain.column(cx, cz);
+            for (const states of [raw.states, persisted.states, populated.states]) {
+              assert.equal(states.some(s => (s >> 4) === 98), false, `Unexpected stonebrick (98) in chunk (${cx},${cz}) for seed ${seed}`);
+            }
+            const pkt = decodePacket(chunkPacket(session.terrain, cx, cz));
+            const chunk = new Chunk(cx, cz, true);
+            chunk.load(pkt.chunkData, 0, pkt.bitMap, true, true);
+            for (let y = 0; y < 256; y++) {
+              for (let z = 0; z < 16; z++) {
+                for (let x = 0; x < 16; x++) {
+                  const st = chunk.getState(x, y, z);
+                  const id = st >> 4;
+                  assert.notEqual(id, 98, `Decoded client chunk unexpectedly contains stonebrick (98) at (${cx * 16 + x}, ${y}, ${cz * 16 + z})`);
+                  if (expectedSpecial.has(id)) {
+                    const resolved = resolveState(st, (gx, gy, gz) => chunk.getState(gx & 15, gy, gz & 15), x, y, z);
+                    assert.equal(resolved?.file, expectedSpecial.get(id));
+                    assert.equal(blocks[id]?.name === 'stonebrick', false);
+                    seenSpecial.add(id);
+                  }
+                }
+              }
+            }
+          }
+        }
+        for (const id of expectedSpecial.keys()) {
+          assert.ok(seenSpecial.has(id), `Expected special block ID ${id} in seed ${seed} sample`);
+        }
+      } finally {
+        await session.close();
+      }
+    }
+  } finally {
+    restoreLocks();
+  }
+
+  // Positive control: the 5-pillar stonebrick (98) cross on full snow (80) patches originates in legacy LandscapeTerrain landmarks.
+  const natural = new LandscapeTerrain('7', worldSettings({ worldType: 'natural', landmarks: true }), []);
+  const plain = new LandscapeTerrain('7', worldSettings({ worldType: 'natural', landmarks: false }), []);
+  const col = natural.column(0, 5);
+  const plainCol = plain.column(0, 5);
+  const index = (x, y, z) => (y << 8) | ((z & 15) << 4) | (x & 15);
+  assert.equal(col.states[index(14, 72, 93)] >> 4, 80); // snow surface
+  assert.equal(plainCol.states[index(14, 73, 93)], 0);
+  for (let y = 73; y <= 78; y++) assert.equal(col.states[index(14, y, 93)], 98 << 4);
+  for (let y = 74; y <= 75; y++) {
+    assert.equal(col.states[index(14, y, 90)], 98 << 4);
+    assert.equal(col.states[index(11, y, 93)], 98 << 4);
+  }
 });

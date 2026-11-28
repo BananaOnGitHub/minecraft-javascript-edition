@@ -99,8 +99,10 @@ export function creationStatus(settings, options) {
   if (options.bonusChest) messages.push('Starter chest generation is pending.');
   if (settings.worldType === 'defaultExperimental') {
     messages.push('Experimental 1.8.9 Default: partial population (no structures, dungeons, animals or full fluids).');
-  } else if (settings.worldType !== 'flat' && settings.worldType !== 'terraces') {
-    messages.push('Original landscape generator. Native terrain parity is pending.');
+  } else if (settings.worldType === 'terraces') {
+    messages.push('Legacy procedural terrace grid (not native 1.8.9 terrain).');
+  } else if (settings.worldType !== 'flat') {
+    messages.push('Legacy procedural landscape generator (not native 1.8.9 terrain).');
   }
   return messages;
 }
